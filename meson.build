@@ -102,6 +102,12 @@ sfml_dep = declare_dependency(
     dependencies: (sfml_lib_deps + sfml_ext_lib_deps)
 )
 
+# JSON dependency.
+json_include_directories = include_directories('vendors/json')
+json_dep = declare_dependency(
+    include_directories: json_include_directories
+)
+
 # Package all dependencies together.
 dependencies = [
     opengl_dep,
@@ -109,7 +115,8 @@ dependencies = [
     glm_dep,
     stb_dep,
     imgui_dep,
-    sfml_dep
+    sfml_dep,
+    json_dep
 ]
 
 # Create executable.
