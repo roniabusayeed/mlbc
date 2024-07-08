@@ -83,9 +83,18 @@ foreach sfml_lib_name : sfml_lib_names
     sfml_lib_deps += meson.get_compiler('cpp').find_library(
         sfml_lib_name,
         dirs: sfml_lib_directory,
-        static: false
+        static: true
     )
 endforeach
+
+# Other external libraries SFML depends on.
+sfml_lib_deps += dependency('openal',       static: true)
+sfml_lib_deps += dependency('flac',         static: true)
+sfml_lib_deps += dependency('freetype',     static: true)
+sfml_lib_deps += dependency('ogg',          static: true)
+sfml_lib_deps += dependency('vorbis',       static: true)
+sfml_lib_deps += dependency('vorbisenc',    static: true)
+sfml_lib_deps += dependency('vorbisfile',   static: true)
 
 sfml_dep = declare_dependency(
     include_directories: sfml_include_directories,
@@ -106,8 +115,5 @@ dependencies = [
 executable(
     'mlbc',
     sources: sources,
-    dependencies: dependencies,
-
-    # Add the relative path 'lib' to the runtime library path (RPATH) of this executable.
-    build_rpath: 'lib'  
+    dependencies: dependencies
 )
