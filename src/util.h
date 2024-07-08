@@ -2,6 +2,12 @@
 
 #include <string>
 #include <iostream>
+#include <cassert>
+
+#include <glm/glm.hpp>
+#include <json.hpp>
+
+#include "imgui.h"
 
 template <typename T>
 inline void print(T obj, const std::string& end = "\n", bool flush_buffer = false) {
@@ -31,3 +37,16 @@ struct FormattedTime : public IPrintable {
 
     void print(std::ostream& os) const override;
 };
+
+inline ImVec2 toImVec2(const glm::vec2& value) { return {value.x, value.y}; }
+inline ImVec4 toImVec4(const glm::vec4& value) { return {value.x, value.y, value.z, value.w}; }
+
+inline glm::vec4 toGLMVec4(const std::vector<float>& value) {
+    assert(value.size() == 4);
+    return {value[0], value[1], value[2], value[3]};
+}
+
+using json = nlohmann::json;
+
+std::string getExecutableDirectory();
+std::string joinPaths(const std::string& path1, const std::string& path2);

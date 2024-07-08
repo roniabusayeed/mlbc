@@ -7,7 +7,8 @@ project(
 # Define project sources.
 sources = files(
     'src/main.cpp',
-    'src/util.cpp'
+    'src/util.cpp',
+    'src/colors.cpp',
 )
 
 
