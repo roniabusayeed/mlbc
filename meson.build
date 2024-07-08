@@ -76,7 +76,6 @@ imgui_dep = declare_dependency(
 # SFML dependencies.
 sfml_include_directories = include_directories('vendors/sfml/include')
 sfml_lib_directory = join_paths(meson.current_source_dir(), 'vendors/sfml/lib')
-
 sfml_lib_names = ['sfml-system', 'sfml-audio']
 sfml_lib_deps = []
 foreach sfml_lib_name : sfml_lib_names
@@ -88,17 +87,19 @@ foreach sfml_lib_name : sfml_lib_names
 endforeach
 
 # Other external libraries SFML depends on.
-sfml_lib_deps += dependency('openal',       static: true)
-sfml_lib_deps += dependency('flac',         static: true)
-sfml_lib_deps += dependency('freetype',     static: true)
-sfml_lib_deps += dependency('ogg',          static: true)
-sfml_lib_deps += dependency('vorbis',       static: true)
-sfml_lib_deps += dependency('vorbisenc',    static: true)
-sfml_lib_deps += dependency('vorbisfile',   static: true)
+sfml_ext_lib_names = ['openal', 'flac', 'freetype', 'ogg', 'vorbis', 'vorbisenc', 'vorbisfile']
+sfml_ext_lib_deps = []
+foreach sfml_ext_lib_name : sfml_ext_lib_names
+    sfml_ext_lib_deps += dependency(
+        sfml_ext_lib_name,
+        static: true
+    )
+endforeach
 
+# Package all sfml dependencies together.
 sfml_dep = declare_dependency(
     include_directories: sfml_include_directories,
-    dependencies: sfml_lib_deps
+    dependencies: (sfml_lib_deps + sfml_ext_lib_deps)
 )
 
 # Package all dependencies together.
