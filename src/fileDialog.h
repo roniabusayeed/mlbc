@@ -3,6 +3,6 @@
 #include <future>
 #include <optional>
 #include <string>
-#include <GLFW/glfw3.h>
+#include <SDL2/SDL.h>
 
-std::future<std::optional<std::string>> openFileDialogAsync(GLFWwindow* parent_window);
+std::future<std::optional<std::string>> openFileDialogAsync(SDL_Window* parent_window);

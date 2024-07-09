@@ -12,8 +12,7 @@ sources = files(
     'src/fileDialog.mm'
 )
 
-
-# OpenGL dependencies.
+# OpenGL dependencies (for graphics rendering).
 opengl_include_directories = include_directories('vendors/glad/include')
 opengl_sources = files('vendors/glad/src/glad.c')
 opengl_dep = declare_dependency(
@@ -28,18 +27,8 @@ opengl_dep = declare_dependency(
     ]
 )
 
-# GLFW dependencies.
-glfw_include_directories = include_directories('vendors/glfw/include')
-glfw_lib_directory = join_paths(meson.current_source_dir(), 'vendors/glfw/lib-arm64')
-glfw_lib_dep = meson.get_compiler('cpp').find_library(
-    'glfw3',
-    dirs: glfw_lib_directory,
-    static: true
-)
-glfw_dep = declare_dependency(
-    include_directories: glfw_include_directories,
-    dependencies: glfw_lib_dep
-)
+# SDL2 dependency (for windowing and handling events).
+sdl2_dep = dependency('sdl2')
 
 # GLM dependencies.
 glm_include_directories = include_directories('vendors/glm')
@@ -67,7 +56,7 @@ imgui_sources = files(
     'vendors/imgui/imgui_draw.cpp',
     'vendors/imgui/imgui_demo.cpp',
 
-    'vendors/imgui/backends/imgui_impl_glfw.cpp',
+    'vendors/imgui/backends/imgui_impl_sdl2.cpp',
     'vendors/imgui/backends/imgui_impl_opengl3.cpp'
 )
 imgui_dep = declare_dependency(
@@ -75,7 +64,7 @@ imgui_dep = declare_dependency(
     sources: imgui_sources
 )
 
-# SFML dependencies.
+# SFML dependencies (for audio).
 sfml_include_directories = include_directories('vendors/sfml/include')
 sfml_lib_directory = join_paths(meson.current_source_dir(), 'vendors/sfml/lib')
 sfml_lib_names = ['sfml-system', 'sfml-audio']
@@ -120,7 +109,7 @@ other_deps = declare_dependency(
 # Package all dependencies together.
 dependencies = [
     opengl_dep,
-    glfw_dep,
+    sdl2_dep,
     glm_dep,
     stb_dep,
     imgui_dep,

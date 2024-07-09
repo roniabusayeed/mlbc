@@ -1,157 +1,173 @@
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-#include <cstdio>
-#include <stdexcept>
-#include <memory>
+#include "app.h"
 
-#define GL_SILENCE_DEPRECATION
-#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_opengl3.h>
+#include <SDL.h>
+#include <SDL_opengl.h>
+#include <stdexcept>
+#include <future>
 
 #include <SFML/Audio.hpp>
 
-#include "app.h"
-#include "util.h"
 #include "colors.h"
+#include "util.h"
 
-class MLBCApp : public App {
+class MLBC : public App {
 private:
-    GLFWwindow* m_window;
-    std::unique_ptr<ui::Theme> m_theme;
+    SDL_Window* m_window;
+    SDL_GLContext m_gl_context;
+
+    sf::Music m_music;
     std::future<std::optional<std::string>> m_open_file_dialog_future;
-    sf::Music music;
 
 public:
-    MLBCApp(const char* title, int32_t width, int32_t height) {
-        glfwSetErrorCallback(glfwErrorCallback);
-        if (!glfwInit()) {
-            throw std::runtime_error("couldn't initialize GLFW library");
+    MLBC(const char* name, int32_t width, int32_t height) {
+        // Setup SDL
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
+            throw std::runtime_error(std::string("error: couldn't initialize SDL: ") + SDL_GetError());
         }
 
         // Decide GL+GLSL versions
     #if defined(IMGUI_IMPL_OPENGL_ES2)
         // GL ES 2.0 + GLSL 100
         const char* glsl_version = "#version 100";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     #elif defined(__APPLE__)
-        // GL 3.2 + GLSL 150
+        // GL 3.2 Core + GLSL 150
         const char* glsl_version = "#version 150";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     #else
         // GL 3.0 + GLSL 130
         const char* glsl_version = "#version 130";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-        //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-        //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    #endif
+
+        // From 2.0.18: Enable native IME.
+    #ifdef SDL_HINT_IME_SHOW_UI
+        SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
     #endif
 
         // Create window with graphics context
-        m_window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        m_window = SDL_CreateWindow(name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
         if (m_window == nullptr) {
-            throw std::runtime_error("couldn't create GLFW window");
+            throw std::runtime_error(std::string("error: SDL_CreateWindow(): ") + SDL_GetError());
         }
-        glfwMakeContextCurrent(m_window);
-        glfwSwapInterval(1); // Enable vsync
 
-        // Setup Dear ImGui context
+        m_gl_context = SDL_GL_CreateContext(m_window);
+        SDL_GL_MakeCurrent(m_window, m_gl_context);
+        SDL_GL_SetSwapInterval(1); // Enable vsync
+
+        // Set the background clear/refreh color.
+        glClearColor(ui::COLOR_DARK_GREY.x, ui::COLOR_DARK_GREY.y, ui::COLOR_DARK_GREY.z, ui::COLOR_DARK_GREY.w);
+
+        // Setup Dear ImGui context.
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-        // Setup Dear ImGui style
+        // Setup Dear ImGui style.
         ImGui::StyleColorsDark();
 
-        // Setup Platform/Renderer backends
-        ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+        // Setup Platform/Renderer backends.
+        ImGui_ImplSDL2_InitForOpenGL(m_window, m_gl_context);
         ImGui_ImplOpenGL3_Init(glsl_version);
     }
 
-    ~MLBCApp() {
+    ~MLBC() {
         
         // Free ImGui resources.
         ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
-        
-        // Free GLFW resources.
-        glfwDestroyWindow(m_window);
-        glfwTerminate();
+
+        // Free SDL resources.
+        SDL_GL_DeleteContext(m_gl_context);
+        SDL_DestroyWindow(m_window);
+        SDL_Quit();
     }
 
-    void startUp() override {
-        
-        // Load application theme.
-        std::string theme_filepath = joinPaths(getExecutableDirectory(), "res/themes/dark-theme.json");
-        std::unique_ptr<ui::Theme> theme = ui::deserializeThemeFromJSON(theme_filepath);
+    virtual void startUp() {
+
     }
-    
-    void update() override {
+
+    virtual void update() {
+        
         ImGui::Begin("Window");
         if (ImGui::Button("Open")) {
-            if (!m_open_file_dialog_future.valid()) {
-                m_open_file_dialog_future = openFileDialogAsync(m_window);
-            }
+            m_open_file_dialog_future = openFileDialogAsync(m_window);
         }
         ImGui::End();
 
         if (m_open_file_dialog_future.valid() && isFutureReady(m_open_file_dialog_future)) {
             auto open_file_dialog_result = m_open_file_dialog_future.get();
             if (open_file_dialog_result.has_value()) {
-
                 std::string filepath = open_file_dialog_result.value();
-                if (!music.openFromFile(filepath)) {
-                    std::cerr << "couldn't open file: " << filepath << std::endl;
+
+                if (!m_music.openFromFile(filepath)) {
+                    print(std::string("couldn't open ") + filepath);
                 } else {
-                    music.play();
+                    m_music.play();
                 }
             }
         }
     }
 
-    void run() override {
+    virtual void run() {
         startUp();
 
-        while (! glfwWindowShouldClose(m_window)) {
-            glfwPollEvents();
+        bool done = false;
+        while (!done) {
+        
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                ImGui_ImplSDL2_ProcessEvent(&event);
+                if (event.type == SDL_QUIT) {
+                    done = true;
+                }
+                if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(m_window)) {
+                    done = true;
+                }
+            }
 
             // Start the Dear ImGui frame
             ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
+            ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
             update();
 
             // Rendering
             ImGui::Render();
-            int display_w, display_h;
-            glfwGetFramebufferSize(m_window, &display_w, &display_h);
-            glViewport(0, 0, display_w, display_h);
+            glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
             glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-            glfwSwapBuffers(m_window);
+            SDL_GL_SwapWindow(m_window);
         }
     }
-
-private:
-    static void glfwErrorCallback(int error, const char* description) {
-        fprintf(stderr, "GLFW Error %d: %s\n", error, description);
-    }
 };
+
 
 int main() {
     const char*   APP_TITLE     = "MLBC";
     const int32_t APP_WDITH     = 800;
     const int32_t APP_HEIGHT    = 600;
 
-    MLBCApp app(APP_TITLE, APP_WDITH, APP_HEIGHT);
-    app.run();
+    MLBC mlbc(APP_TITLE, APP_WDITH, APP_HEIGHT);
+    mlbc.run();
 }
