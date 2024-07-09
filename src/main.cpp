@@ -1,30 +1,136 @@
-#include <iostream>
-#include <thread>
-#include <chrono>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <cstdio>
+#include <stdexcept>
+#include <memory>
 
-#include <SFML/Audio.hpp>
+#define GL_SILENCE_DEPRECATION
+#include <GLFW/glfw3.h>
+
+#include "app.h"
 #include "util.h"
+#include "colors.h"
 
-int main(int argc, char** argv) {
+class MLBCApp : public App {
+private:
+    GLFWwindow* m_window;
+    std::unique_ptr<ui::Theme> m_theme;
 
-    // Ensure proper usage.
-    if (argc != 2) {
-        std::cerr << "usage: ./" << argv[0] << " <audio-filename>" << std::endl;
-        return EXIT_FAILURE;
+public:
+    MLBCApp(const char* title, int32_t width, int32_t height) {
+        glfwSetErrorCallback(glfw_error_callback);
+        if (!glfwInit()) {
+            throw std::runtime_error("couldn't initialize GLFW library");
+        }
+
+        // Decide GL+GLSL versions
+    #if defined(IMGUI_IMPL_OPENGL_ES2)
+        // GL ES 2.0 + GLSL 100
+        const char* glsl_version = "#version 100";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    #elif defined(__APPLE__)
+        // GL 3.2 + GLSL 150
+        const char* glsl_version = "#version 150";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+    #else
+        // GL 3.0 + GLSL 130
+        const char* glsl_version = "#version 130";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+        //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+        //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+    #endif
+
+        // Create window with graphics context
+        m_window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+        if (m_window == nullptr) {
+            throw std::runtime_error("couldn't create GLFW window");
+        }
+        glfwMakeContextCurrent(m_window);
+        glfwSwapInterval(1); // Enable vsync
+
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+
+        // Setup Platform/Renderer backends
+        ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+        ImGui_ImplOpenGL3_Init(glsl_version);
     }
 
-    // Remember filename.
-    std::string filename = argv[1];
-
-    // Open audio file.
-    sf::Music music;
-    if (!music.openFromFile(filename)) {
-        std::cerr << "couldn't open file " << filename << std::endl;
-        return EXIT_FAILURE;
+    ~MLBCApp() {
+        
+        // Free ImGui resources.
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        
+        // Free GLFW resources.
+        glfwDestroyWindow(m_window);
+        glfwTerminate();
     }
 
-    music.play();
-    std::this_thread::sleep_for(std::chrono::microseconds(music.getDuration().asMicroseconds()));
+    void startUp() override {
+        
+        // Load application theme.
+        std::string theme_filepath = joinPaths(getExecutableDirectory(), "res/themes/dark-theme.json");
+        std::unique_ptr<ui::Theme> theme = ui::deserializeThemeFromJSON(theme_filepath);
+    }
+    
+    void update() override {
+        ImGui::Begin("Window");
+        ImGui::Text("Hello, world!");
+        ImGui::End();
+    }
 
-    return EXIT_SUCCESS;
+    void run() override {
+        startUp();
+
+        while (! glfwWindowShouldClose(m_window)) {
+            glfwPollEvents();
+
+            // Start the Dear ImGui frame
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            update();
+
+            // Rendering
+            ImGui::Render();
+            int display_w, display_h;
+            glfwGetFramebufferSize(m_window, &display_w, &display_h);
+            glViewport(0, 0, display_w, display_h);
+            glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+            glfwSwapBuffers(m_window);
+        }
+    }
+
+private:
+    static void glfw_error_callback(int error, const char* description) {
+        fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+    }
+};
+
+int main() {
+    const char*   APP_TITLE     = "MLBC";
+    const int32_t APP_WDITH     = 800;
+    const int32_t APP_HEIGHT    = 600;
+
+    MLBCApp app(APP_TITLE, APP_WDITH, APP_HEIGHT);
+    app.run();
 }
