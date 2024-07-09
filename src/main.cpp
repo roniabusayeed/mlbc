@@ -8,6 +8,8 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include <SFML/Audio.hpp>
+
 #include "app.h"
 #include "util.h"
 #include "colors.h"
@@ -16,10 +18,12 @@ class MLBCApp : public App {
 private:
     GLFWwindow* m_window;
     std::unique_ptr<ui::Theme> m_theme;
+    std::future<std::optional<std::string>> m_open_file_dialog_future;
+    sf::Music music;
 
 public:
     MLBCApp(const char* title, int32_t width, int32_t height) {
-        glfwSetErrorCallback(glfw_error_callback);
+        glfwSetErrorCallback(glfwErrorCallback);
         if (!glfwInit()) {
             throw std::runtime_error("couldn't initialize GLFW library");
         }
@@ -91,8 +95,25 @@ public:
     
     void update() override {
         ImGui::Begin("Window");
-        ImGui::Text("Hello, world!");
+        if (ImGui::Button("Open")) {
+            if (!m_open_file_dialog_future.valid()) {
+                m_open_file_dialog_future = openFileDialogAsync(m_window);
+            }
+        }
         ImGui::End();
+
+        if (m_open_file_dialog_future.valid() && isFutureReady(m_open_file_dialog_future)) {
+            auto open_file_dialog_result = m_open_file_dialog_future.get();
+            if (open_file_dialog_result.has_value()) {
+
+                std::string filepath = open_file_dialog_result.value();
+                if (!music.openFromFile(filepath)) {
+                    std::cerr << "couldn't open file: " << filepath << std::endl;
+                } else {
+                    music.play();
+                }
+            }
+        }
     }
 
     void run() override {
@@ -121,7 +142,7 @@ public:
     }
 
 private:
-    static void glfw_error_callback(int error, const char* description) {
+    static void glfwErrorCallback(int error, const char* description) {
         fprintf(stderr, "GLFW Error %d: %s\n", error, description);
     }
 };

@@ -1,5 +1,5 @@
 project(
-    'mlbc', ['cpp', 'c'],
+    'mlbc', ['cpp', 'c', 'objc', 'objcpp'],
     version: '1.0.0',
     default_options: ['cpp_std=c++20', 'c_std=c99']
 )
@@ -9,6 +9,7 @@ sources = files(
     'src/main.cpp',
     'src/util.cpp',
     'src/colors.cpp',
+    'src/fileDialog.mm'
 )
 
 
@@ -109,6 +110,13 @@ json_dep = declare_dependency(
     include_directories: json_include_directories
 )
 
+# Additional project dependencies.
+other_deps = declare_dependency(
+    dependencies: [
+        dependency('AppKit')
+    ]
+)
+
 # Package all dependencies together.
 dependencies = [
     opengl_dep,
@@ -117,7 +125,8 @@ dependencies = [
     stb_dep,
     imgui_dep,
     sfml_dep,
-    json_dep
+    json_dep,
+    other_deps
 ]
 
 # Create executable.

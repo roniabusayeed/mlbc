@@ -3,6 +3,8 @@
 #include <string>
 #include <iostream>
 #include <cassert>
+#include <future>
+#include <chrono>
 
 #include <glm/glm.hpp>
 #include <json.hpp>
@@ -50,3 +52,10 @@ using json = nlohmann::json;
 
 std::string getExecutableDirectory();
 std::string joinPaths(const std::string& path1, const std::string& path2);
+
+template<typename T>
+bool isFutureReady(std::future<T>& future) {
+    return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+
+#include "fileDialog.h"
