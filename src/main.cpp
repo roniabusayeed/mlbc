@@ -19,7 +19,6 @@ private:
     SDL_GLContext m_gl_context;
 
     sf::Music m_music;
-    std::future<std::optional<std::string>> m_open_file_dialog_future;
 
 public:
     MLBC(const char* name, int32_t width, int32_t height) {
@@ -71,6 +70,8 @@ public:
         SDL_GL_MakeCurrent(m_window, m_gl_context);
         SDL_GL_SetSwapInterval(1); // Enable vsync
 
+        // TODO: Load OpenGL functions.
+
         // Set the background clear/refreh color.
         glClearColor(ui::COLOR_DARK_GREY.x, ui::COLOR_DARK_GREY.y, ui::COLOR_DARK_GREY.z, ui::COLOR_DARK_GREY.w);
 
@@ -102,33 +103,42 @@ public:
         SDL_Quit();
     }
 
-    virtual void startUp() {
+    void startUp() override {
 
     }
 
-    virtual void update() {
-        
+    void update() override {
         ImGui::Begin("Window");
         if (ImGui::Button("Open")) {
-            m_open_file_dialog_future = openFileDialogAsync(m_window);
-        }
-        ImGui::End();
-
-        if (m_open_file_dialog_future.valid() && isFutureReady(m_open_file_dialog_future)) {
-            auto open_file_dialog_result = m_open_file_dialog_future.get();
-            if (open_file_dialog_result.has_value()) {
-                std::string filepath = open_file_dialog_result.value();
-
-                if (!m_music.openFromFile(filepath)) {
-                    print(std::string("couldn't open ") + filepath);
-                } else {
-                    m_music.play();
+            openFileDialogAsync([this](std::optional<std::string> path) {
+                if (path.has_value()) {
+                    m_music.stop();
+                    if (!m_music.openFromFile(path.value())) {
+                        std::cerr << "couldn't open " << path.value() << std::endl;
+                    } else {
+                        m_music.play();
+                    }
                 }
+            });
+        }
+
+        // Stop button.
+        if (ImGui::Button("Stop")) { m_music.stop(); }
+
+        // Play/pause button.
+        std::string play_pause_button_title = (m_music.getStatus() == sf::Music::Playing ? "Pause" : "Play");
+        if (ImGui::Button((play_pause_button_title + "###play-pause-button").c_str())) {
+            if (m_music.getStatus() == sf::Music::Playing) {
+                m_music.pause();
+            } else if (m_music.getStatus() == sf::Music::Paused) {
+                m_music.play();
             }
         }
+        
+        ImGui::End();
     }
 
-    virtual void run() {
+    void run() override {
         startUp();
 
         bool done = false;
