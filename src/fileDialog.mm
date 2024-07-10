@@ -4,7 +4,35 @@
 #include <SDL2/SDL_syswm.h>
 #include <AppKit/AppKit.h>
 
-std::future<std::optional<std::string>> openFileDialogAsync(SDL_Window* parent_window) {
+std::future<std::optional<std::string>> openFileDialogAsync(bool directory) {
+    
+    // Create a promise to return the file or folder path.
+    std::shared_ptr<std::promise<std::optional<std::string>>> promise = std::make_shared<std::promise<std::optional<std::string>>>();
+    auto future = promise->get_future();
+
+    // Dispatch the file dialog to the main queue asynchronously.
+    dispatch_async(dispatch_get_main_queue(), [promise = std::move(promise), directory]() mutable {
+        NSOpenPanel* panel = [NSOpenPanel openPanel];
+        [panel setAllowsMultipleSelection:NO];
+        [panel setCanChooseDirectories:directory];
+        [panel setCanChooseFiles:!directory];
+
+        // Run the panel in a non-modal way.
+        NSInteger result = [panel runModal];
+
+        if (result == NSModalResponseOK) {
+            NSURL* selectedURL = [[panel URLs] firstObject];
+            std::string path = std::string([[selectedURL path] UTF8String]);
+            promise->set_value(std::optional<std::string>{path});
+        } else {
+            promise->set_value(std::nullopt);
+        }
+    });
+
+    return future;
+}
+
+std::future<std::optional<std::string>> saveFileDialogAsync(SDL_Window* parent_window) {
     
     // Create a promise to return the file path.
     std::shared_ptr<std::promise<std::optional<std::string>>> promise = std::make_shared<std::promise<std::optional<std::string>>>();
@@ -12,10 +40,11 @@ std::future<std::optional<std::string>> openFileDialogAsync(SDL_Window* parent_w
 
     // Dispatch the file dialog to the main queue asynchronously.
     dispatch_async(dispatch_get_main_queue(), [promise = std::move(promise), parent_window]() mutable {
-        NSOpenPanel* panel = [NSOpenPanel openPanel];
-        [panel setAllowsMultipleSelection:NO];
-        [panel setCanChooseDirectories:NO];
-        [panel setCanChooseFiles:YES];
+        NSSavePanel* panel = [NSSavePanel savePanel];
+
+        // Set properties of the save panel
+        [panel setCanCreateDirectories:YES];
+        [panel setShowsTagField:NO];
 
         // Retrieve the NSWindow from the SDL_Window.
         SDL_SysWMinfo wmInfo;
@@ -26,7 +55,7 @@ std::future<std::optional<std::string>> openFileDialogAsync(SDL_Window* parent_w
         // Begin the sheet modal for the parent window.
         [panel beginSheetModalForWindow:nsParentWindow completionHandler:^(NSModalResponse result) {
             if (result == NSModalResponseOK) {
-                NSURL* selectedFile = [[panel URLs] firstObject];
+                NSURL* selectedFile = [panel URL];
                 std::string filePath = std::string([[selectedFile path] UTF8String]);
                 promise->set_value(std::optional<std::string>{filePath});
             } else {
