@@ -5,6 +5,7 @@
 #include <cassert>
 #include <future>
 #include <chrono>
+#include <concepts>
 
 #include <glm/glm.hpp>
 #include <json.hpp>
@@ -12,6 +13,16 @@
 #include "imgui.h"
 
 template <typename T>
+concept Printable = requires(T obj) {
+    // { expression-1-that-has-to-be-valid };
+    // { expression-2-that-has-to-be-valid };
+    // { expression-3-that-has-to-be-valid };
+    // ...
+    { std::cout << obj };
+};
+
+template <typename T> 
+    requires Printable<T>
 inline void print(T obj, const std::string& end = "\n", bool flush_buffer = false) {
     std::cout << obj << end;
     if (flush_buffer) {
@@ -51,10 +62,21 @@ inline glm::vec4 toGLMVec4(const std::vector<float>& value) {
 using json = nlohmann::json;
 
 std::string getExecutableDirectory();
-std::string joinPaths(const std::string& path1, const std::string& path2);
+
+template <typename... T>
+    requires (std::convertible_to<T, std::string> && ...)
+inline std::string joinPaths(const T&... path) {
+    std::vector path_segments({std::string(path)...});
+    namespace fs = std::filesystem;
+    fs::path result;
+    for (const auto& path_segment : path_segments) {
+        result /= path_segment;
+    }
+    return result.string();
+}
 
 template<typename T>
-bool isFutureReady(std::future<T>& future) {
+inline bool isFutureReady(std::future<T>& future) {
     return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 }
 

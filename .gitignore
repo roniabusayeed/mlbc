@@ -4,3 +4,4 @@ build/
 res/
 imgui.ini
 run.sh
+tools/

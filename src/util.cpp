@@ -75,8 +75,3 @@ std::string getExecutableDirectory() {
         return exePath.substr(0, pos);
     }
 }
-
-std::string joinPaths(const std::string& path1, const std::string& path2) {
-    namespace fs = std::filesystem;
-    return (fs::path(path1) / fs::path(path2)).string();
-}

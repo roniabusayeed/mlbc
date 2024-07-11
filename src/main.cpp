@@ -21,6 +21,7 @@ private:
     SDL_GLContext m_gl_context;
 
     std::unique_ptr<ui::Theme> m_theme;
+    ImFont* m_ui_font;
 
     sf::Music m_music;
 
@@ -92,8 +93,15 @@ public:
         // Setup Platform/Renderer backends.
         ImGui_ImplSDL2_InitForOpenGL(m_window, m_gl_context);
         ImGui_ImplOpenGL3_Init(glsl_version);
-
+        
+        // Load application theme.
         m_theme = ui::deserializeThemeFromJSON(APPLICATION_THEME_FILEPATH);
+        
+        // Load application UI font.
+        m_ui_font = io.Fonts->AddFontFromFileTTF(APPLICATION_UI_FONT_FILEPATH.c_str(), APPLICATION_UI_FONT_SIZE);
+        if (!m_ui_font) {
+            throw std::runtime_error("couldn't load UI font: " + APPLICATION_UI_FONT_FILEPATH);
+        }
     }
 
     ~MLBC() {
@@ -176,7 +184,9 @@ public:
 
             // Draw UI.
             m_theme->push();
+            ImGui::PushFont(m_ui_font);
             update();
+            ImGui::PopFont();
             m_theme->pop();
 
             // Rendering.
