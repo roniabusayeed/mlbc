@@ -8,15 +8,19 @@
 #include <stdexcept>
 #include <future>
 
+#include <SFML/System.hpp>
 #include <SFML/Audio.hpp>
 
 #include "colors.h"
 #include "util.h"
+#include "constants.h"
 
 class MLBC : public App {
 private:
     SDL_Window* m_window;
     SDL_GLContext m_gl_context;
+
+    std::unique_ptr<ui::Theme> m_theme;
 
     sf::Music m_music;
 
@@ -88,6 +92,8 @@ public:
         // Setup Platform/Renderer backends.
         ImGui_ImplSDL2_InitForOpenGL(m_window, m_gl_context);
         ImGui_ImplOpenGL3_Init(glsl_version);
+
+        m_theme = ui::deserializeThemeFromJSON(APPLICATION_THEME_FILEPATH);
     }
 
     ~MLBC() {
@@ -113,6 +119,7 @@ public:
             openFileDialogAsync([this](std::optional<std::string> path) {
                 if (path.has_value()) {
                     m_music.stop();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     if (!m_music.openFromFile(path.value())) {
                         std::cerr << "couldn't open " << path.value() << std::endl;
                     } else {
@@ -121,9 +128,14 @@ public:
                 }
             });
         }
+        ImGui::SameLine();
 
         // Stop button.
-        if (ImGui::Button("Stop")) { m_music.stop(); }
+        if (ImGui::Button("Stop")) { 
+            sf::Clock clock;
+            m_music.stop();
+        }
+        ImGui::SameLine();
 
         // Play/pause button.
         std::string play_pause_button_title = (m_music.getStatus() == sf::Music::Playing ? "Pause" : "Play");
@@ -136,6 +148,8 @@ public:
         }
         
         ImGui::End();
+
+        ImGui::ShowDemoWindow();
     }
 
     void run() override {
@@ -155,14 +169,17 @@ public:
                 }
             }
 
-            // Start the Dear ImGui frame
+            // Start the Dear ImGui frame.
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
+            // Draw UI.
+            m_theme->push();
             update();
+            m_theme->pop();
 
-            // Rendering
+            // Rendering.
             ImGui::Render();
             glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
             glClear(GL_COLOR_BUFFER_BIT);

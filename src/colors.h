@@ -3,10 +3,16 @@
 #include <memory>
 #include <glm/glm.hpp>
 
-
 namespace ui
 {
     struct Theme {
+    private:
+        int32_t m_push_count{ };
+        int32_t m_pushed_color_count{ };
+
+        void pushColor(ImGuiCol idx, const glm::vec4& color);
+
+    public:
         glm::vec4 Text;
         glm::vec4 TextDisabled;
         glm::vec4 WindowBg;
@@ -63,11 +69,16 @@ namespace ui
         glm::vec4 NavWindowingHighlight;
         glm::vec4 NavWindowingDimBg;
         glm::vec4 ModalWindowDimBg;
+
+        void push();
+        void pop();
+
+        ~Theme();
     };
 
     std::unique_ptr<Theme> deserializeThemeFromJSON(const std::string& filepath);
 
-    // Other constants.
+    // Color constants.
     const glm::vec4 COLOR_DARK_GREY = {0.2f, 0.2f, 0.2f, 1.0f};
 
 }   // namespace colors

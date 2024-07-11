@@ -84,4 +84,83 @@ namespace ui {
 
         return theme;
     }
+
+    void Theme::pushColor(ImGuiCol idx, const glm::vec4& color) {
+        ImGui::PushStyleColor(idx, toImVec4(color));
+        m_pushed_color_count++;
+    }
+
+    void Theme::push() {
+        pushColor(ImGuiCol_Text, Text);
+        pushColor(ImGuiCol_TextDisabled, TextDisabled);
+        pushColor(ImGuiCol_WindowBg, WindowBg);
+        pushColor(ImGuiCol_ChildBg, ChildBg);
+        pushColor(ImGuiCol_PopupBg, PopupBg);
+        pushColor(ImGuiCol_Border, Border);
+        pushColor(ImGuiCol_BorderShadow, BorderShadow);
+        pushColor(ImGuiCol_FrameBg, FrameBg);
+        pushColor(ImGuiCol_FrameBgHovered, FrameBgHovered);
+        pushColor(ImGuiCol_FrameBgActive, FrameBgActive);
+        pushColor(ImGuiCol_TitleBg, TitleBg);
+        pushColor(ImGuiCol_TitleBgActive, TitleBgActive);
+        pushColor(ImGuiCol_TitleBgCollapsed, TitleBgCollapsed);
+        pushColor(ImGuiCol_MenuBarBg, MenuBarBg);
+        pushColor(ImGuiCol_ScrollbarBg, ScrollbarBg);
+        pushColor(ImGuiCol_ScrollbarGrab, ScrollbarGrab);
+        pushColor(ImGuiCol_ScrollbarGrabHovered, ScrollbarGrabHovered);
+        pushColor(ImGuiCol_ScrollbarGrabActive, ScrollbarGrabActive);
+        pushColor(ImGuiCol_CheckMark, CheckMark);
+        pushColor(ImGuiCol_SliderGrab, SliderGrab);
+        pushColor(ImGuiCol_SliderGrabActive, SliderGrabActive);
+        pushColor(ImGuiCol_Button, Button);
+        pushColor(ImGuiCol_ButtonHovered, ButtonHovered);
+        pushColor(ImGuiCol_ButtonActive, ButtonActive);
+        pushColor(ImGuiCol_Header, Header);
+        pushColor(ImGuiCol_HeaderHovered, HeaderHovered);
+        pushColor(ImGuiCol_HeaderActive, HeaderActive);
+        pushColor(ImGuiCol_Separator, Separator);
+        pushColor(ImGuiCol_SeparatorHovered, SeparatorHovered);
+        pushColor(ImGuiCol_SeparatorActive, SeparatorActive);
+        pushColor(ImGuiCol_ResizeGrip, ResizeGrip);
+        pushColor(ImGuiCol_ResizeGripHovered, ResizeGripHovered);
+        pushColor(ImGuiCol_ResizeGripActive, ResizeGripActive);
+        pushColor(ImGuiCol_Tab, Tab);
+        pushColor(ImGuiCol_TabHovered, TabHovered);
+        pushColor(ImGuiCol_TabSelected, TabSelected);
+        pushColor(ImGuiCol_TabSelectedOverline, TabSelectedOverline);
+        pushColor(ImGuiCol_TabDimmed, TabDimmed);
+        pushColor(ImGuiCol_TabDimmedSelected, TabDimmedSelected);
+        pushColor(ImGuiCol_TabDimmedSelectedOverline, TabDimmedSelectedOverline);
+        pushColor(ImGuiCol_PlotLines, PlotLines);
+        pushColor(ImGuiCol_PlotLinesHovered, PlotLinesHovered);
+        pushColor(ImGuiCol_PlotHistogram, PlotHistogram);
+        pushColor(ImGuiCol_PlotHistogramHovered, PlotHistogramHovered);
+        pushColor(ImGuiCol_TableHeaderBg, TableHeaderBg);
+        pushColor(ImGuiCol_TableBorderStrong, TableBorderStrong);
+        pushColor(ImGuiCol_TableBorderLight, TableBorderLight);
+        pushColor(ImGuiCol_TableRowBg, TableRowBg);
+        pushColor(ImGuiCol_TableRowBgAlt, TableRowBgAlt);
+        pushColor(ImGuiCol_TextLink, TextLink);
+        pushColor(ImGuiCol_TextSelectedBg, TextSelectedBg);
+        pushColor(ImGuiCol_DragDropTarget, DragDropTarget);
+        pushColor(ImGuiCol_NavHighlight, NavHighlight);
+        pushColor(ImGuiCol_NavWindowingHighlight, NavWindowingHighlight);
+        pushColor(ImGuiCol_NavWindowingDimBg, NavWindowingDimBg);
+        pushColor(ImGuiCol_ModalWindowDimBg, ModalWindowDimBg);
+
+        m_push_count++;
+    }
+
+    void Theme::pop() {
+        ImGui::PopStyleColor(m_pushed_color_count);
+        m_pushed_color_count = 0;
+
+        m_push_count--;
+    }
+
+    Theme::~Theme() {
+        if (m_push_count != 0) {
+            std::runtime_error("mismatched number of Theme::push() and Theme::pop() calls");
+        }
+    }
 }
