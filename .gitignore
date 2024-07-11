@@ -1,7 +1,6 @@
 build/
 .idea/
 .vscode/
-res/
 imgui.ini
 run.sh
 tools/
