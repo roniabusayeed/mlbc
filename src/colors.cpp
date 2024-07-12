@@ -85,6 +85,91 @@ namespace ui {
         return theme;
     }
 
+    void setupImGuiStyleFromTheme(const Theme& theme, float alpha_threshold) {
+        ImGuiStyle& style = ImGui::GetStyle();
+
+        // Set style colors (from Theme).
+        style.Colors[ImGuiCol_Text]                         = toImVec4(theme.Text);
+        style.Colors[ImGuiCol_TextDisabled]                 = toImVec4(theme.TextDisabled);
+        style.Colors[ImGuiCol_WindowBg]                     = toImVec4(theme.WindowBg);
+        style.Colors[ImGuiCol_ChildBg]                      = toImVec4(theme.ChildBg);
+        style.Colors[ImGuiCol_PopupBg]                      = toImVec4(theme.PopupBg);
+        style.Colors[ImGuiCol_Border]                       = toImVec4(theme.Border);
+        style.Colors[ImGuiCol_BorderShadow]                 = toImVec4(theme.BorderShadow);
+        style.Colors[ImGuiCol_FrameBg]                      = toImVec4(theme.FrameBg);
+        style.Colors[ImGuiCol_FrameBgHovered]               = toImVec4(theme.FrameBgHovered);
+        style.Colors[ImGuiCol_FrameBgActive]                = toImVec4(theme.FrameBgActive);
+        style.Colors[ImGuiCol_TitleBg]                      = toImVec4(theme.TitleBg);
+        style.Colors[ImGuiCol_TitleBgActive]                = toImVec4(theme.TitleBgActive);
+        style.Colors[ImGuiCol_TitleBgCollapsed]             = toImVec4(theme.TitleBgCollapsed);
+        style.Colors[ImGuiCol_MenuBarBg]                    = toImVec4(theme.MenuBarBg);
+        style.Colors[ImGuiCol_ScrollbarBg]                  = toImVec4(theme.ScrollbarBg);
+        style.Colors[ImGuiCol_ScrollbarGrab]                = toImVec4(theme.ScrollbarGrab);
+        style.Colors[ImGuiCol_ScrollbarGrabHovered]         = toImVec4(theme.ScrollbarGrabHovered);
+        style.Colors[ImGuiCol_ScrollbarGrabActive]          = toImVec4(theme.ScrollbarGrabActive);
+        style.Colors[ImGuiCol_CheckMark]                    = toImVec4(theme.CheckMark);
+        style.Colors[ImGuiCol_SliderGrab]                   = toImVec4(theme.SliderGrab);
+        style.Colors[ImGuiCol_SliderGrabActive]             = toImVec4(theme.SliderGrabActive);
+        style.Colors[ImGuiCol_Button]                       = toImVec4(theme.Button);
+        style.Colors[ImGuiCol_ButtonHovered]                = toImVec4(theme.ButtonHovered);
+        style.Colors[ImGuiCol_ButtonActive]                 = toImVec4(theme.ButtonActive);
+        style.Colors[ImGuiCol_Header]                       = toImVec4(theme.Header);
+        style.Colors[ImGuiCol_HeaderHovered]                = toImVec4(theme.HeaderHovered);
+        style.Colors[ImGuiCol_HeaderActive]                 = toImVec4(theme.HeaderActive);
+        style.Colors[ImGuiCol_Separator]                    = toImVec4(theme.Separator);
+        style.Colors[ImGuiCol_SeparatorHovered]             = toImVec4(theme.SeparatorHovered);
+        style.Colors[ImGuiCol_SeparatorActive]              = toImVec4(theme.SeparatorActive);
+        style.Colors[ImGuiCol_ResizeGrip]                   = toImVec4(theme.ResizeGrip);
+        style.Colors[ImGuiCol_ResizeGripHovered]            = toImVec4(theme.ResizeGripHovered);
+        style.Colors[ImGuiCol_ResizeGripActive]             = toImVec4(theme.ResizeGripActive);
+        style.Colors[ImGuiCol_Tab]                          = toImVec4(theme.Tab);
+        style.Colors[ImGuiCol_TabHovered]                   = toImVec4(theme.TabHovered);
+        style.Colors[ImGuiCol_TabSelected]                  = toImVec4(theme.TabSelected);
+        style.Colors[ImGuiCol_TabSelectedOverline]          = toImVec4(theme.TabSelectedOverline);
+        style.Colors[ImGuiCol_TabDimmed]                    = toImVec4(theme.TabDimmed);
+        style.Colors[ImGuiCol_TabDimmedSelected]            = toImVec4(theme.TabDimmedSelected);
+        style.Colors[ImGuiCol_TabDimmedSelectedOverline]    = toImVec4(theme.TabDimmedSelectedOverline);
+        style.Colors[ImGuiCol_PlotLines]                    = toImVec4(theme.PlotLines);
+        style.Colors[ImGuiCol_PlotLinesHovered]             = toImVec4(theme.PlotLinesHovered);
+        style.Colors[ImGuiCol_PlotHistogram]                = toImVec4(theme.PlotHistogram);
+        style.Colors[ImGuiCol_PlotHistogramHovered]         = toImVec4(theme.PlotHistogramHovered);
+        style.Colors[ImGuiCol_TableHeaderBg]                = toImVec4(theme.TableHeaderBg);
+        style.Colors[ImGuiCol_TableBorderStrong]            = toImVec4(theme.TableBorderStrong);
+        style.Colors[ImGuiCol_TableBorderLight]             = toImVec4(theme.TableBorderLight);
+        style.Colors[ImGuiCol_TableRowBg]                   = toImVec4(theme.TableRowBg);
+        style.Colors[ImGuiCol_TableRowBgAlt]                = toImVec4(theme.TableRowBgAlt);
+        style.Colors[ImGuiCol_TextLink]                     = toImVec4(theme.TextLink);
+        style.Colors[ImGuiCol_TextSelectedBg]               = toImVec4(theme.TextSelectedBg);
+        style.Colors[ImGuiCol_DragDropTarget]               = toImVec4(theme.DragDropTarget);
+        style.Colors[ImGuiCol_NavHighlight]                 = toImVec4(theme.NavHighlight);
+        style.Colors[ImGuiCol_NavWindowingHighlight]        = toImVec4(theme.NavWindowingHighlight);
+        style.Colors[ImGuiCol_NavWindowingDimBg]            = toImVec4(theme.NavWindowingDimBg);
+        style.Colors[ImGuiCol_ModalWindowDimBg]             = toImVec4(theme.ModalWindowDimBg);
+
+        // Adjusts the alpha values of the ImGui colors based on the alpha threshold.
+        for (int i = 0; i < ImGuiCol_COUNT; i++)
+        {
+            const auto color_id = static_cast<ImGuiCol>(i);
+            auto& color = style.Colors[i];
+            if (
+                (color_id != ImGuiCol_NavWindowingDimBg) &&
+                (color_id != ImGuiCol_ModalWindowDimBg) &&
+                (color.w < 1.0f || color_id == ImGuiCol_FrameBg || color_id == ImGuiCol_WindowBg || color_id == ImGuiCol_ChildBg)
+            ) {
+                color.w *= alpha_threshold;
+            }
+        }
+
+        // Set the border sizes and rounding.
+        // TODO: Consider exposing the following styles to the Theme API.
+        style.ChildBorderSize = 1.0f;
+        style.FrameBorderSize = 0.0f;
+        style.PopupBorderSize = 1.0f;
+        style.WindowBorderSize = 1.0f;
+        style.FrameRounding = 3.0f;
+        style.Alpha = 1.0f;
+    }
+
     void Theme::pushColor(ImGuiCol idx, const glm::vec4& color) {
         ImGui::PushStyleColor(idx, toImVec4(color));
         m_pushed_color_count++;

@@ -70,13 +70,14 @@ namespace ui
         glm::vec4 NavWindowingDimBg;
         glm::vec4 ModalWindowDimBg;
 
-        void push();
+        void push();    // use Theme::push() to apply this theme after ImGui::NewFrame() has been called.
         void pop();
 
         ~Theme();
     };
 
     std::unique_ptr<Theme> deserializeThemeFromJSON(const std::string& filepath);
+    void setupImGuiStyleFromTheme(const Theme& theme, float alpha_threshold = 1.0f);
 
     // Color constants.
     const glm::vec4 COLOR_DARK_GREY = {0.2f, 0.2f, 0.2f, 1.0f};

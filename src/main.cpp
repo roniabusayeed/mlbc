@@ -96,6 +96,9 @@ public:
         
         // Load application theme.
         m_theme = ui::deserializeThemeFromJSON(APPLICATION_THEME_FILEPATH);
+
+        // Setup ImGui style using the loaded theme.
+        ui::setupImGuiStyleFromTheme(*m_theme);
         
         // Load application UI font.
         m_ui_font = io.Fonts->AddFontFromFileTTF(APPLICATION_UI_FONT_FILEPATH.c_str(), APPLICATION_UI_FONT_SIZE);
@@ -183,12 +186,10 @@ public:
             ImGui::NewFrame();
 
             // Draw UI.
-            m_theme->push();
             ImGui::PushFont(m_ui_font);
             update();
             ImGui::PopFont();
-            m_theme->pop();
-
+            
             // Rendering.
             ImGui::Render();
             glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
