@@ -22,6 +22,8 @@ private:
 
     std::unique_ptr<ui::Theme> m_theme;
     ImFont* m_ui_font;
+    ImFont* m_ui_icon_regular_font;
+    ImFont* m_ui_icon_solid_font;
 
     sf::Music m_music;
 
@@ -101,10 +103,11 @@ public:
         ui::setupImGuiStyleFromTheme(*m_theme);
         
         // Load application UI font.
-        m_ui_font = io.Fonts->AddFontFromFileTTF(APPLICATION_UI_FONT_FILEPATH.c_str(), APPLICATION_UI_FONT_SIZE);
-        if (!m_ui_font) {
-            throw std::runtime_error("couldn't load UI font: " + APPLICATION_UI_FONT_FILEPATH);
-        }
+        m_ui_font = ui::loadFont(APPLICATION_UI_FONT_FILEPATH, APPLICATION_UI_FONT_SIZE);
+
+        // Load application UI icon font.
+        m_ui_icon_regular_font = ui::loadIconFont(APPLICATION_UI_ICON_FONT_REGULAR_FILEPATH, APPLICATION_UI_FONT_SIZE);
+        m_ui_icon_solid_font = ui::loadIconFont(APPLICATION_UI_ICON_FONT_SOLID_FILEPATH, APPLICATION_UI_FONT_SIZE);
     }
 
     ~MLBC() {
@@ -142,21 +145,34 @@ public:
         ImGui::SameLine();
 
         // Stop button.
-        if (ImGui::Button("Stop")) { 
+        if (ImGui::Button(ICON_FA_STOP, {50.0f, 0.0f})) { 
             sf::Clock clock;
             m_music.stop();
         }
         ImGui::SameLine();
 
         // Play/pause button.
-        std::string play_pause_button_title = (m_music.getStatus() == sf::Music::Playing ? "Pause" : "Play");
-        if (ImGui::Button((play_pause_button_title + "###play-pause-button").c_str())) {
+        ImGui::PushFont(m_ui_icon_regular_font);
+        std::string play_pause_button_title = (m_music.getStatus() == sf::Music::Playing ? ICON_FA_PAUSE : ICON_FA_PLAY);
+        if (ImGui::Button((play_pause_button_title + "###play-pause-button").c_str(), {50.0f, 0.0f})) {
             if (m_music.getStatus() == sf::Music::Playing) {
                 m_music.pause();
             } else if (m_music.getStatus() == sf::Music::Paused) {
                 m_music.play();
             }
         }
+        ImGui::PopFont();
+        
+        ImGui::End();
+
+        ImGui::Begin("Icons");
+        ImGui::PushFont(m_ui_icon_regular_font);
+        ImGui::Text(ICON_FA_FOLDER_OPEN " Open");
+        ImGui::Text(ICON_FA_FOLDER_CLOSED " Save");
+        ImGui::Text(ICON_FA_COPY " Copy");
+        ImGui::Text(ICON_FA_PASTE " Paste");
+        ImGui::Text(ICON_FA_SCISSORS " CUT");
+        ImGui::PopFont();
         
         ImGui::End();
 

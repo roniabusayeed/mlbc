@@ -13,6 +13,8 @@
 #endif
 
 #include "util.h"
+#include "imgui.h"
+#include "constants.h"
 
 std::ostream& operator<<(std::ostream& os, const IPrintable& printable) {
     printable.print(os);
@@ -73,5 +75,37 @@ std::string getExecutableDirectory() {
         return "";
     } else {
         return exePath.substr(0, pos);
+    }
+}
+
+namespace ui {
+    ImFont* loadFont(const std::string& filepath, float size) {
+        ImFont* loaded_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(filepath.c_str(), size);
+        
+        if (!loaded_font) {
+            throw std::runtime_error("couldn't load UI font: " + filepath);
+        }
+
+        return loaded_font;
+    }
+
+    ImFont* loadIconFont(const std::string& filepath, float size) {
+        float icon_font_size = size;
+        // float icon_font_size = size * 2.0f / 3.0f;
+
+        static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+        
+        ImFontConfig icons_config; 
+        icons_config.MergeMode = true; 
+        icons_config.PixelSnapH = true; 
+        icons_config.GlyphMinAdvanceX = icon_font_size;
+        
+        ImFont* loaded_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(filepath.c_str(), icon_font_size, &icons_config, icons_ranges);
+        
+        if (!loaded_font) {
+            throw std::runtime_error("couldn't load UI icon font: " + filepath);
+        }
+
+        return loaded_font;
     }
 }

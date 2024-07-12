@@ -11,6 +11,7 @@
 #include <json.hpp>
 
 #include "imgui.h"
+#include "IconsFontAwesome.h"
 
 template <typename T>
 concept Printable = requires(T obj) {
@@ -81,3 +82,8 @@ inline bool isFutureReady(std::future<T>& future) {
 }
 
 #include "fileDialog.h"
+
+namespace ui {
+    ImFont* loadFont(const std::string& filepath, float size);
+    ImFont* loadIconFont(const std::string& filepath, float size);
+}
