@@ -46,10 +46,13 @@ struct FormattedTime : public IPrintable {
     int16_t milliseconds;
     int16_t microseconds;
 
-    FormattedTime();
-    explicit FormattedTime(int64_t microseconds);
+    bool display_fractional_seconds;
 
+    FormattedTime(bool display_fractional_seconds = false);
+    explicit FormattedTime(int64_t microseconds, bool display_fractional_seconds = false);
     void print(std::ostream& os) const override;
+    
+    static FormattedTime fromSeconds(int64_t seconds, bool display_fractional_seconds = false);
 };
 
 inline ImVec2 toImVec2(const glm::vec2& value) { return {value.x, value.y}; }
@@ -86,4 +89,5 @@ inline bool isFutureReady(std::future<T>& future) {
 namespace ui {
     ImFont* loadFont(const std::string& filepath, float size);
     ImFont* loadIconFont(const std::string& filepath, float size);
+    std::pair<std::optional<std::string>, std::optional<std::string>> extractTitleAndID(std::optional<std::string> label);
 }

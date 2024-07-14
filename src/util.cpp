@@ -21,33 +21,41 @@ std::ostream& operator<<(std::ostream& os, const IPrintable& printable) {
     return os;
 }
 
-FormattedTime::FormattedTime() : hours(0), minutes(0), seconds(0), milliseconds(0), microseconds(0) {}
+FormattedTime::FormattedTime(bool display_fractional_seconds) : hours(0), minutes(0), seconds(0), milliseconds(0), microseconds(0), display_fractional_seconds(display_fractional_seconds) {}
     
-FormattedTime::FormattedTime(int64_t microseconds) {
-    int64_t temp = microseconds;
+FormattedTime::FormattedTime(int64_t microseconds, bool display_fractional_seconds)
+    : display_fractional_seconds(display_fractional_seconds) {
+    int64_t tmp = microseconds;
     
-    this->microseconds = temp % 1000;
-    temp /= 1000;
+    this->microseconds = tmp % 1000;
+    tmp /= 1000;
     
-    milliseconds = temp % 1000;
-    temp /= 1000;
+    milliseconds = tmp % 1000;
+    tmp /= 1000;
 
-    seconds = temp % 60;
-    temp /= 60;
+    seconds = tmp % 60;
+    tmp /= 60;
 
-    minutes = temp % 60;
-    temp /= 60;
+    minutes = tmp % 60;
+    tmp /= 60;
 
-    hours = temp;
+    hours = tmp;
 }
 
 void FormattedTime::print(std::ostream& os) const {
     os << std::setfill('0');
     os << std::setw(2) << hours << ":";
-    os << std::setw(2) << minutes << ":";
-    os << std::setw(2) << seconds << ".";
-    os << std::setw(3) << milliseconds;
-    os << std::setw(3) << microseconds;
+    os << std::setw(2) << static_cast<int>(minutes) << ":";
+    os << std::setw(2) << static_cast<int>(seconds);
+
+    if (display_fractional_seconds) {
+        os << "." << std::setw(3) << milliseconds;
+        os << std::setw(3) << microseconds;
+    }
+}
+
+FormattedTime FormattedTime::fromSeconds(int64_t seconds, bool display_fractional_seconds) {
+    return FormattedTime(seconds * 1000000LL, display_fractional_seconds);
 }
 
 std::string getExecutableDirectory() {
@@ -107,5 +115,42 @@ namespace ui {
         }
 
         return loaded_font;
+    }
+
+    std::pair<std::optional<std::string>, std::optional<std::string>> extractTitleAndID(std::optional<std::string> label) {
+        
+        // If the label is std::nullopt or an empty string then both the display string
+        // the id string are std::nullopt.
+        if (!label || !label->length()) {
+            return {std::nullopt, std::nullopt};
+        }
+
+        std::string label_str = label.value();
+        std::optional<std::string> display_string;
+        std::optional<std::string> id_string;
+
+        // If the label has "###", the preceding substring of non-zero length is the display string
+        // and the following substring of non-zero length is the id string.
+        size_t triple_hash_pos = label_str.find("###");
+        if (triple_hash_pos != std::string::npos) {
+            display_string = (triple_hash_pos > 0) ? std::optional(label_str.substr(0, triple_hash_pos)) : std::nullopt;
+            id_string = label_str.substr(triple_hash_pos + 3);
+            if (!id_string.value().length()) {
+                id_string = std::nullopt;
+            }
+            return {display_string, id_string};
+        }
+
+        // If the label has "##", the preceding substring of non-zero length is the display string
+        // and the entire label string is the display string.
+        size_t double_hash_pos = label_str.find("##");
+        if (double_hash_pos != std::string::npos) {
+            display_string = (double_hash_pos > 0) ? std::optional(label_str.substr(0, double_hash_pos)) : std::nullopt;
+            id_string = label_str;
+            return {display_string, id_string};
+        }
+
+        // If neither ### nor ## is found, the label is both display string and id string.
+        return {label, label};
     }
 }

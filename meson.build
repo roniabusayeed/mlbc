@@ -9,7 +9,8 @@ sources = files(
     'src/main.cpp',
     'src/util.cpp',
     'src/colors.cpp',
-    'src/fileDialog.mm'
+    'src/fileDialog.mm',
+    'src/widgets.cpp'
 )
 
 # OpenGL dependencies (for graphics rendering).
