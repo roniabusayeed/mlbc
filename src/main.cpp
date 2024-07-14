@@ -86,8 +86,10 @@ public:
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls.
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls.
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable docking.
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable multiple viewports.
 
         // Setup Dear ImGui style.
         ImGui::StyleColorsDark();
@@ -128,55 +130,7 @@ public:
     }
 
     void update() override {
-        ImGui::Begin("Window");
-        if (ImGui::Button("Open")) {
-            openFileDialogAsync([this](std::optional<std::string> path) {
-                if (path.has_value()) {
-                    m_music.stop();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    if (!m_music.openFromFile(path.value())) {
-                        std::cerr << "couldn't open " << path.value() << std::endl;
-                    } else {
-                        m_music.play();
-                    }
-                }
-            });
-        }
-        ImGui::SameLine();
-
-        // Stop button.
-        if (ImGui::Button(ICON_FA_STOP, {50.0f, 0.0f})) { 
-            sf::Clock clock;
-            m_music.stop();
-        }
-        ImGui::SameLine();
-
-        // Play/pause button.
-        ImGui::PushFont(m_ui_icon_regular_font);
-        std::string play_pause_button_title = (m_music.getStatus() == sf::Music::Playing ? ICON_FA_PAUSE : ICON_FA_PLAY);
-        if (ImGui::Button((play_pause_button_title + "###play-pause-button").c_str(), {50.0f, 0.0f})) {
-            if (m_music.getStatus() == sf::Music::Playing) {
-                m_music.pause();
-            } else if (m_music.getStatus() == sf::Music::Paused) {
-                m_music.play();
-            }
-        }
-        ImGui::PopFont();
         
-        ImGui::End();
-
-        ImGui::Begin("Icons");
-        ImGui::PushFont(m_ui_icon_regular_font);
-        ImGui::Text(ICON_FA_FOLDER_OPEN " Open");
-        ImGui::Text(ICON_FA_FOLDER_CLOSED " Save");
-        ImGui::Text(ICON_FA_COPY " Copy");
-        ImGui::Text(ICON_FA_PASTE " Paste");
-        ImGui::Text(ICON_FA_SCISSORS " CUT");
-        ImGui::PopFont();
-        
-        ImGui::End();
-
-        ImGui::ShowDemoWindow();
     }
 
     void run() override {
@@ -211,6 +165,16 @@ public:
             glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
             glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+                SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+                SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+            }
+
             SDL_GL_SwapWindow(m_window);
         }
     }
@@ -219,8 +183,8 @@ public:
 
 int main() {
     const char*   APP_TITLE     = "MLBC";
-    const int32_t APP_WDITH     = 800;
-    const int32_t APP_HEIGHT    = 600;
+    const int32_t APP_WDITH     = 600;
+    const int32_t APP_HEIGHT    = 350;
 
     MLBC mlbc(APP_TITLE, APP_WDITH, APP_HEIGHT);
     mlbc.run();
