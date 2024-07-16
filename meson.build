@@ -10,7 +10,8 @@ sources = files(
     'src/util.cpp',
     'src/colors.cpp',
     'src/fileDialog.mm',
-    'src/widgets.cpp'
+    'src/widgets.cpp',
+    'src/docking.cpp'
 )
 
 # OpenGL dependencies (for graphics rendering).
@@ -48,7 +49,8 @@ stb_dep = declare_dependency(
 # ImGui dependencies.
 imgui_include_directories = include_directories(
     'vendors/imgui',
-    'vendors/imgui/backends'
+    'vendors/imgui/backends',
+    'vendors/imgui/misc/cpp'
 )
 imgui_sources = files(
     'vendors/imgui/imgui.cpp',
@@ -56,6 +58,7 @@ imgui_sources = files(
     'vendors/imgui/imgui_tables.cpp',
     'vendors/imgui/imgui_draw.cpp',
     'vendors/imgui/imgui_demo.cpp',
+    'vendors/imgui/misc/cpp/imgui_stdlib.cpp',
 
     'vendors/imgui/backends/imgui_impl_sdl2.cpp',
     'vendors/imgui/backends/imgui_impl_opengl3.cpp'

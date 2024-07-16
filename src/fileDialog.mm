@@ -12,6 +12,7 @@ void openFileDialogAsync(std::function<void(std::optional<std::string>)> callbac
         [panel setAllowsMultipleSelection:NO];
         [panel setCanChooseDirectories:directory];
         [panel setCanChooseFiles:!directory];
+        [panel setCanCreateDirectories:YES];
 
         // Run the panel in a non-modal way.
         NSInteger result = [panel runModal];

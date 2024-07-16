@@ -166,7 +166,13 @@ namespace ui {
         style.FrameBorderSize = 0.0f;
         style.PopupBorderSize = 1.0f;
         style.WindowBorderSize = 1.0f;
+        
         style.FrameRounding = 3.0f;
+        style.GrabRounding = 3.0f;
+        style.PopupRounding = 3.0f;
+        style.GrabRounding = 3.0f;
+        style.WindowRounding = 10.0f;
+        
         style.Alpha = 1.0f;
     }
 
