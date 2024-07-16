@@ -154,3 +154,36 @@ namespace ui {
         return {label, label};
     }
 }
+
+std::vector<std::string> getValidExtensions(MediaType media_type) {
+    if (media_type == MediaType::Image) {
+        return {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff"};
+    }
+    if (media_type == MediaType::Audio) {
+        return {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"};
+    }
+    throw std::invalid_argument("Unsupported media type");
+}
+
+std::vector<std::string> loadMediaFiles(const std::string& directory_path, MediaType media_type) {
+    namespace fs = std::filesystem;
+
+    std::vector<std::string> media_files;
+    auto valid_extensions = getValidExtensions(media_type);
+
+    try {
+        for (const auto& entry : fs::directory_iterator(directory_path)) {
+            if (entry.is_regular_file()) {
+                auto file_path = entry.path();
+                auto extension = file_path.extension().string();
+                if (std::find(valid_extensions.begin(), valid_extensions.end(), extension) != valid_extensions.end()) {
+                    media_files.push_back(file_path.string());
+                }
+            }
+        }
+    } catch (const fs::filesystem_error& e) {
+        throw std::runtime_error("Error accessing directory: " + std::string(e.what()));
+    }
+
+    return media_files;
+}

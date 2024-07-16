@@ -22,30 +22,27 @@ struct UIFlags {
     bool ConfigureDirectories{ false };
 };
 
-enum class MediaType: int32_t {
-    IMAGE = 0,
-    AUDIO = 1
-};
-
 struct ConfigureDirectoriesData {
     std::string sourceDirectory { };
     std::string classADirectory { };
     std::string classBDirectory { };
-    MediaType mediaType         {MediaType::IMAGE};
+    MediaType mediaType         {MediaType::Image};
     std::string outputFilePath  { };
 };
 
 class MLBC : public App {
 private:
-    SDL_Window*                     m_window;
-    SDL_GLContext                   m_gl_context;
+    SDL_Window*                                                     m_window;
+    SDL_GLContext                                                   m_gl_context;
 
-    std::unique_ptr<ui::Theme>      m_theme;
-    ImFont*                         m_ui_font;
-    ImFont*                         m_ui_icon_regular_font;
-    ImFont*                         m_ui_icon_solid_font;
-    sf::Music                       m_music;
-    UIFlags                         m_ui_flags;
+    std::unique_ptr<ui::Theme>                                      m_theme;
+    ImFont*                                                         m_ui_font;
+    ImFont*                                                         m_ui_icon_regular_font;
+    ImFont*                                                         m_ui_icon_solid_font;
+    sf::Music                                                       m_music;
+    UIFlags                                                         m_ui_flags;
+
+    std::optional<std::pair<std::vector<std::string>, MediaType>>   m_media_sources;
 
     const char* WINDOW_FILES = "Files";
     const char* WINDOW_MEDIA_PREVIEW = "Media Preview";
@@ -174,7 +171,20 @@ public:
         // Docked windows.
         ImGuiWindowFlags docked_window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
         if (ImGui::Begin(WINDOW_FILES, nullptr, docked_window_flags)) {
+            if (m_media_sources) {
+                namespace fs = std::filesystem;
+                const std::vector<std::string>& media_filepaths = m_media_sources->first;
+                MediaType media_type = m_media_sources->second;
+                for (size_t i = 0; i < media_filepaths.size(); i++) {
+                    std::string file_icon;
+                    if (media_type == MediaType::Image) { file_icon = ICON_FA_FILE_IMAGE; }
+                    else if (media_type == MediaType::Audio) { file_icon = ICON_FA_FILE_AUDIO; }
+                    else { file_icon = ICON_FA_FILE; }
 
+                    std::string file_entry = file_icon + fs::path(media_filepaths.at(i)).filename().string();
+                    ImGui::Text("%s", file_entry.c_str());
+                }
+            }
         }
         ImGui::End();
 
@@ -193,7 +203,7 @@ public:
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             
-            showConfigureDirectoriesWindow([](std::optional<ConfigureDirectoriesData> data) {
+            showConfigureDirectoriesWindow([this](std::optional<ConfigureDirectoriesData> data) {
                 if (!data) {
                     std::cout << "Cancelled directory configuration" << std::endl;
                 } else {
@@ -201,9 +211,11 @@ public:
                     std::cout << "Source: " << data->sourceDirectory << std::endl;
                     std::cout << "Class A: " << data->classADirectory << std::endl;
                     std::cout << "Class B: " << data->classBDirectory << std::endl;
-                    std::cout << "Media Type: " << (data->mediaType == MediaType::IMAGE ? "Image" : "Audio") << std::endl;
+                    std::cout << "Media Type: " << (data->mediaType == MediaType::Image ? "Image" : "Audio") << std::endl;
                     std::cout << "Output: " << data->outputFilePath << std::endl;
                 }
+
+                m_media_sources = {loadMediaFiles(data->sourceDirectory, data->mediaType), data->mediaType};
             });
         }
     }

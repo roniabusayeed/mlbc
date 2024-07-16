@@ -6,6 +6,7 @@
 #include <future>
 #include <chrono>
 #include <concepts>
+#include <filesystem>
 
 #include <glm/glm.hpp>
 #include <json.hpp>
@@ -91,3 +92,11 @@ namespace ui {
     ImFont* loadIconFont(const std::string& filepath, float size);
     std::pair<std::optional<std::string>, std::optional<std::string>> extractTitleAndID(std::optional<std::string> label);
 }
+
+enum class MediaType: int32_t {
+    Image = 0,
+    Audio = 1
+};
+
+std::vector<std::string> getValidExtensions(MediaType media_type);
+std::vector<std::string> loadMediaFiles(const std::string& directory_path, MediaType media_type);
