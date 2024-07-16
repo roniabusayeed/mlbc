@@ -32,6 +32,8 @@ struct ConfigureDirectoriesData {
 
 class MLBC : public App {
 private:
+    bool                                                            m_application_should_close{ false };
+
     SDL_Window*                                                     m_window;
     SDL_GLContext                                                   m_gl_context;
 
@@ -213,9 +215,9 @@ public:
                     std::cout << "Class B: " << data->classBDirectory << std::endl;
                     std::cout << "Media Type: " << (data->mediaType == MediaType::Image ? "Image" : "Audio") << std::endl;
                     std::cout << "Output: " << data->outputFilePath << std::endl;
-                }
 
-                m_media_sources = {loadMediaFiles(data->sourceDirectory, data->mediaType), data->mediaType};
+                    m_media_sources = {loadMediaFiles(data->sourceDirectory, data->mediaType), data->mediaType};
+                }
             });
         }
     }
@@ -223,17 +225,17 @@ public:
     void run() override {
         startUp();
 
-        bool done = false;
-        while (!done) {
+        m_application_should_close = false;
+        while (!m_application_should_close) {
         
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 ImGui_ImplSDL2_ProcessEvent(&event);
                 if (event.type == SDL_QUIT) {
-                    done = true;
+                    m_application_should_close = true;
                 }
                 if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(m_window)) {
-                    done = true;
+                    m_application_should_close = true;
                 }
             }
 
@@ -273,6 +275,11 @@ public:
 private:
     void showMainMenuBar() {
         if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("Close Directories")) { m_media_sources = std::nullopt; }
+                if (ImGui::MenuItem("Exit")) { m_application_should_close = true; }
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Configure")) {
                 if (ImGui::MenuItem("Directories")) { m_ui_flags.ConfigureDirectories = true; }
                 ImGui::EndMenu();
