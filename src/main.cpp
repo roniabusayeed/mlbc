@@ -1,5 +1,6 @@
 #include "app.h"
 
+#include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_impl_sdl2.h>
@@ -107,15 +108,30 @@ public:
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
         m_window = SDL_CreateWindow(name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, window_flags);
-        if (m_window == nullptr) {
-            throw std::runtime_error(std::string("error: SDL_CreateWindow(): ") + SDL_GetError());
+        if (! m_window) {
+            SDL_Quit();
+            std::cerr << std::string("error: SDL_CreateWindow(): ") + SDL_GetError() << std::endl;
+            exit(EXIT_FAILURE);
         }
 
         m_gl_context = SDL_GL_CreateContext(m_window);
+        if (! m_gl_context) {
+            SDL_DestroyWindow(m_window);
+            SDL_Quit();
+            std::cerr << std::string("error: SDL_GL_CreateContext(): ") + SDL_GetError() << std::endl;
+            exit(EXIT_FAILURE);
+        }
         SDL_GL_MakeCurrent(m_window, m_gl_context);
         SDL_GL_SetSwapInterval(1); // Enable vsync
 
-        // TODO: Load OpenGL functions.
+        // Initialize GLAD.
+        if (! gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+            SDL_GL_DeleteContext(m_gl_context);
+            SDL_DestroyWindow(m_window);
+            SDL_Quit();
+            std::cerr << "error: Failed to initialize GLAD" << std::endl;
+            exit(EXIT_FAILURE);
+        }
 
         // Set the background clear/refreh color.
         glClearColor(ui::COLOR_DARK_GREY.x, ui::COLOR_DARK_GREY.y, ui::COLOR_DARK_GREY.z, ui::COLOR_DARK_GREY.w);
@@ -229,7 +245,11 @@ public:
         ImGui::End();
 
         if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags)) {
-
+            if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Image) {
+                // handle image preview
+            } else if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Audio) {
+                // handle audio preview
+            }
         }
         ImGui::End();
 
