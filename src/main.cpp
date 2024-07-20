@@ -246,23 +246,22 @@ public:
             showConfigureDirectoriesWindow([this](std::optional<DirectoryConfiguration> data) {
                 if (data) {
 
-                    // Initially load the configured directories when a directory configuration is set.
+                    // Initially load (asynchronously) the configured directories when a directory configuration is set.
 
-
-                    {
+                    loadMediaFilesAsync(data->sourceDirectory, data->mediaType, [this, data](const std::vector<std::string>& files) {
                         std::lock_guard<std::mutex> lock(mutex_media_sources);
-                        m_media_sources = loadMediaFiles(data->sourceDirectory, data->mediaType);
-                    }
-                    
-                    {
+                        m_media_sources = std::move(files);
+                    });
+
+                    loadMediaFilesAsync(data->classADirectory, data->mediaType, [this, data](const std::vector<std::string>& files) {
                         std::lock_guard<std::mutex> lock(mutex_media_class_a);
-                        m_media_class_a = loadMediaFiles(data->classADirectory, data->mediaType);
-                    }
-                    
-                    {
+                        m_media_class_a = std::move(files);
+                    });
+
+                    loadMediaFilesAsync(data->classBDirectory, data->mediaType, [this, data](const std::vector<std::string>& files) {
                         std::lock_guard<std::mutex> lock(mutex_media_class_b);
-                        m_media_class_b = loadMediaFiles(data->classBDirectory, data->mediaType);
-                    }
+                        m_media_class_b = std::move(files);
+                    });
 
                     m_directory_configuration = data;
 

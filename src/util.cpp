@@ -165,14 +165,14 @@ std::vector<std::string> getValidExtensions(MediaType media_type) {
     throw std::invalid_argument("Unsupported media type");
 }
 
-std::vector<std::string> loadMediaFiles(const std::string& directory_path, MediaType media_type) {
+std::vector<std::string> loadMediaFiles(const std::string& directory, MediaType media_type) {
     namespace fs = std::filesystem;
 
     std::vector<std::string> media_files;
     auto valid_extensions = getValidExtensions(media_type);
 
     try {
-        for (const auto& entry : fs::directory_iterator(directory_path)) {
+        for (const auto& entry : fs::directory_iterator(directory)) {
             if (entry.is_regular_file()) {
                 auto file_path = entry.path();
                 auto extension = file_path.extension().string();
@@ -186,4 +186,13 @@ std::vector<std::string> loadMediaFiles(const std::string& directory_path, Media
     }
 
     return media_files;
+}
+
+void loadMediaFilesAsync(const std::string& directory, MediaType mediaType, std::function<void(const std::vector<std::string>&)> on_media_files_loaded) {
+    std::thread([directory, mediaType, on_media_files_loaded]() {
+        std::vector<std::string> files = loadMediaFiles(directory, mediaType);
+        if (on_media_files_loaded) {
+            on_media_files_loaded(files);
+        }
+    }).detach();
 }
