@@ -1,4 +1,5 @@
 #include "widgets.h"
+#include "image.h"
 
 namespace ui {
 namespace widget {
@@ -76,5 +77,36 @@ namespace widget {
 
         ImGui::PopID();
         return value_changed;
+    }
+
+    void ImageView(const Image& image) {
+        ImVec2 image_size = {static_cast<float>(image.getWidth()), static_cast<float>(image.getHeight())};
+        ImVec2 viewport_size = ImGui::GetContentRegionAvail();
+
+        float image_aspect_ratio = image_size.x / image_size.y;
+        float viewport_aspect_ratio = viewport_size.x / viewport_size.y;
+
+        // Calculate the final display size.
+        ImVec2 display_size = image_size;
+
+        if (display_size.x > viewport_size.x || display_size.y > viewport_size.y) {
+            if (viewport_aspect_ratio > image_aspect_ratio) {
+                display_size.y = viewport_size.y;
+                display_size.x = display_size.y * image_aspect_ratio;
+            } else {
+                display_size.x = viewport_size.x;
+                display_size.y = display_size.x / image_aspect_ratio;
+            }
+        }
+
+        // Calculate padding to center the image.
+        ImVec2 padding = {(viewport_size.x - display_size.x) * 0.5f, (viewport_size.y - display_size.y) * 0.5f};
+
+        // Apply padding.
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + padding.x);
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + padding.y);
+
+        // Display the image.
+        ImGui::Image(image.getTexture(), display_size);
     }
 }}

@@ -19,6 +19,8 @@
 #include "constants.h"
 #include "docking.h"
 #include "fileWatcher.h"
+#include "image.h"
+#include "widgets.h"
 
 struct UIFlags {
     bool ConfigureDirectories{ false };
@@ -55,6 +57,8 @@ private:
     std::unique_ptr<Watcher>                                        m_media_class_b_watcher;
 
     std::optional<DirectoryConfiguration>                           m_directory_configuration;
+
+    std::optional<Image>                                            m_current_media_image_preview;
 
     // Mutexes to protect shared resources.
     std::mutex                                                      mutex_media_sources;
@@ -206,39 +210,45 @@ public:
             if (ImGui::CollapsingHeader("Source")) {
                 std::lock_guard<std::mutex> lock(mutex_media_sources);
                 if (m_media_sources.has_value()) {
+                    ImGui::Indent();
                     filesListView(
                         m_media_sources.value(),
                         m_directory_configuration->mediaType,
-                        [](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            std::cout << filepaths.at(selected_index) << std::endl; // print selected path
+                        [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                            m_current_media_image_preview = Image::loadFromFile(filepaths.at(selected_index));
                         }
                     );
+                    ImGui::Unindent();
                 }  
             }
 
             if (ImGui::CollapsingHeader("Class A")) {
                 std::lock_guard<std::mutex> lock(mutex_media_class_a);
                 if (m_media_class_a.has_value()) {
+                    ImGui::Indent();
                     filesListView(
                         m_media_class_a.value(),
                         m_directory_configuration->mediaType,
-                        [](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            std::cout << filepaths.at(selected_index) << std::endl; // print selected path
+                        [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                            m_current_media_image_preview = Image::loadFromFile(filepaths.at(selected_index));
                         }
                     );
+                    ImGui::Unindent();
                 }
             }
             
             if (ImGui::CollapsingHeader("Class B")) {
                 std::lock_guard<std::mutex> lock(mutex_media_class_b);
                 if (m_media_class_b.has_value()) {
+                    ImGui::Indent();
                     filesListView(
                         m_media_class_b.value(),
                         m_directory_configuration->mediaType,
-                        [](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            std::cout << filepaths.at(selected_index) << std::endl; // print selected path
+                        [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                            m_current_media_image_preview = Image::loadFromFile(filepaths.at(selected_index));
                         }
                     );
+                    ImGui::Unindent();
                 }
             }
         }
@@ -246,7 +256,9 @@ public:
 
         if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags)) {
             if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Image) {
-                // handle image preview
+                if (m_current_media_image_preview.has_value()) {
+                    ui::widget::ImageView(m_current_media_image_preview.value());
+                }
             } else if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Audio) {
                 // handle audio preview
             }
@@ -635,7 +647,7 @@ private:
             if (media_type == MediaType::Image) { file_icon = ICON_FA_FILE_IMAGE; }
             else if (media_type == MediaType::Audio) { file_icon = ICON_FA_FILE_AUDIO; }
             else { file_icon = ICON_FA_FILE; }
-            std::string file_entry = file_icon + fs::path(filepaths.at(i)).filename().string();
+            std::string file_entry = file_icon + " " + fs::path(filepaths.at(i)).filename().string();
             
             static int selected_index = -1;
             if (ImGui::Selectable(file_entry.c_str(), selected_index == i)) {

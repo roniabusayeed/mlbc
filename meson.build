@@ -12,7 +12,8 @@ sources = files(
     'src/fileDialog.mm',
     'src/widgets.cpp',
     'src/docking.cpp',
-    'src/fileWatcher.cpp'
+    'src/fileWatcher.cpp',
+    'src/image.cpp'
 )
 
 # efsw dependency (file watcher)

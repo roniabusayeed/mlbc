@@ -4,6 +4,7 @@
 #include <imgui.h>
 
 #include "util.h"
+#include "image.h"
 
 namespace ui {
 namespace widget {
@@ -24,4 +25,14 @@ namespace widget {
         std::optional<float> vertical_padding = std::nullopt,
         std::optional<float> horizontal_widget_sapcing = std::nullopt
     );
+
+    /**
+     * @brief Displays an image within the available ImGui content region, maintaining its aspect ratio.
+     * This function scales down the image if necessary to fit within the available viewport while maintaining
+     * the original aspect ratio. It also centers the image both vertically and horizontally within the viewport.
+     *
+     * @param image The Image object containing the texture to display, along with its width and height.
+     */
+    void ImageView(const Image& image);
+
 }}  // namespace widget, ui
