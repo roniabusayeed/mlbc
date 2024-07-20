@@ -17,12 +17,13 @@
 #include "util.h"
 #include "constants.h"
 #include "docking.h"
+#include "fileWatcher.h"
 
 struct UIFlags {
     bool ConfigureDirectories{ false };
 };
 
-struct ConfigureDirectoriesData {
+struct DirectoryConfiguration {
     std::string sourceDirectory { };
     std::string classADirectory { };
     std::string classBDirectory { };
@@ -44,7 +45,20 @@ private:
     sf::Music                                                       m_music;
     UIFlags                                                         m_ui_flags;
 
-    std::optional<std::pair<std::vector<std::string>, MediaType>>   m_media_sources;
+    std::optional<std::vector<std::string>>                         m_media_sources;
+    std::optional<std::vector<std::string>>                         m_media_class_a;
+    std::optional<std::vector<std::string>>                         m_media_class_b;
+
+    std::unique_ptr<Watcher>                                        m_media_sources_watcher;
+    std::unique_ptr<Watcher>                                        m_media_class_a_watcher;
+    std::unique_ptr<Watcher>                                        m_media_class_b_watcher;
+
+    std::optional<DirectoryConfiguration>                           m_directory_configuration;
+
+    // Mutexes to protect shared resources.
+    std::mutex                                                      mutex_media_sources;
+    std::mutex                                                      mutex_media_class_a;
+    std::mutex                                                      mutex_media_class_b;
 
     const char* WINDOW_FILES = "Files";
     const char* WINDOW_MEDIA_PREVIEW = "Media Preview";
@@ -173,18 +187,42 @@ public:
         // Docked windows.
         ImGuiWindowFlags docked_window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
         if (ImGui::Begin(WINDOW_FILES, nullptr, docked_window_flags)) {
-            if (m_media_sources) {
-                namespace fs = std::filesystem;
-                const std::vector<std::string>& media_filepaths = m_media_sources->first;
-                MediaType media_type = m_media_sources->second;
-                for (size_t i = 0; i < media_filepaths.size(); i++) {
-                    std::string file_icon;
-                    if (media_type == MediaType::Image) { file_icon = ICON_FA_FILE_IMAGE; }
-                    else if (media_type == MediaType::Audio) { file_icon = ICON_FA_FILE_AUDIO; }
-                    else { file_icon = ICON_FA_FILE; }
+            if (ImGui::CollapsingHeader("Source")) {
+                std::lock_guard<std::mutex> lock(mutex_media_sources);
+                if (m_media_sources.has_value()) {
+                    filesListView(
+                        m_media_sources.value(),
+                        m_directory_configuration->mediaType,
+                        [](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                            std::cout << filepaths.at(selected_index) << std::endl; // print selected path
+                        }
+                    );
+                }  
+            }
 
-                    std::string file_entry = file_icon + fs::path(media_filepaths.at(i)).filename().string();
-                    ImGui::Text("%s", file_entry.c_str());
+            if (ImGui::CollapsingHeader("Class A")) {
+                std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                if (m_media_class_a.has_value()) {
+                    filesListView(
+                        m_media_class_a.value(),
+                        m_directory_configuration->mediaType,
+                        [](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                            std::cout << filepaths.at(selected_index) << std::endl; // print selected path
+                        }
+                    );
+                }
+            }
+            
+            if (ImGui::CollapsingHeader("Class B")) {
+                std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                if (m_media_class_b.has_value()) {
+                    filesListView(
+                        m_media_class_b.value(),
+                        m_directory_configuration->mediaType,
+                        [](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                            std::cout << filepaths.at(selected_index) << std::endl; // print selected path
+                        }
+                    );
                 }
             }
         }
@@ -205,18 +243,67 @@ public:
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             
-            showConfigureDirectoriesWindow([this](std::optional<ConfigureDirectoriesData> data) {
-                if (!data) {
-                    std::cout << "Cancelled directory configuration" << std::endl;
-                } else {
-                    std::cout << "Directory Configurations:" << std::endl;
-                    std::cout << "Source: " << data->sourceDirectory << std::endl;
-                    std::cout << "Class A: " << data->classADirectory << std::endl;
-                    std::cout << "Class B: " << data->classBDirectory << std::endl;
-                    std::cout << "Media Type: " << (data->mediaType == MediaType::Image ? "Image" : "Audio") << std::endl;
-                    std::cout << "Output: " << data->outputFilePath << std::endl;
+            showConfigureDirectoriesWindow([this](std::optional<DirectoryConfiguration> data) {
+                if (data) {
 
-                    m_media_sources = {loadMediaFiles(data->sourceDirectory, data->mediaType), data->mediaType};
+                    // Initially load the configured directories when a directory configuration is set.
+
+
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_sources);
+                        m_media_sources = loadMediaFiles(data->sourceDirectory, data->mediaType);
+                    }
+                    
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                        m_media_class_a = loadMediaFiles(data->classADirectory, data->mediaType);
+                    }
+                    
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                        m_media_class_b = loadMediaFiles(data->classBDirectory, data->mediaType);
+                    }
+
+                    m_directory_configuration = data;
+
+                    // Set up watchers to asynchronously watch the configured directories for changes.
+                    // If there are any changes to the configured directories, reload them.
+
+                    try {
+                        m_media_sources_watcher  = std::make_unique<Watcher>(
+                            data->sourceDirectory,
+                            [this, data](const std::string& directory, const std::string& file, efsw::Action action, const std::string& old_file) {
+                                std::lock_guard<std::mutex> lock(mutex_media_sources);
+                                m_media_sources = loadMediaFiles(data->sourceDirectory, data->mediaType);
+                            }
+                        );
+                    } catch (const std::runtime_error& re) {
+                        std::cerr << re.what() << std::endl;
+                    }
+
+                    try {
+                        m_media_class_a_watcher  = std::make_unique<Watcher>(
+                            data->classADirectory,
+                            [this, data](const std::string& directory, const std::string& file, efsw::Action action, const std::string& old_file) {
+                                std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                                m_media_class_a = loadMediaFiles(data->classADirectory, data->mediaType);
+                            }
+                        );
+                    } catch (const std::runtime_error& re) {
+                        std::cerr << re.what() << std::endl;
+                    }
+                    
+                    try {
+                        m_media_class_b_watcher  = std::make_unique<Watcher>(
+                            data->classBDirectory,
+                            [this, data](const std::string& directory, const std::string& file, efsw::Action action, const std::string& old_file) {
+                                std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                                m_media_class_b = loadMediaFiles(data->classBDirectory, data->mediaType);
+                            }
+                        );
+                    } catch (const std::runtime_error& re) {
+                        std::cerr << re.what() << std::endl;
+                    }
                 }
             });
         }
@@ -276,7 +363,28 @@ private:
     void showMainMenuBar() {
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("File")) {
-                if (ImGui::MenuItem("Close Directories")) { m_media_sources = std::nullopt; }
+                if (ImGui::MenuItem("Close Directories")) {
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_sources);
+                        m_media_sources = std::nullopt;
+                    }
+                    
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                        m_media_class_a = std::nullopt;
+                    }
+                    
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                        m_media_class_b = std::nullopt;
+                    }
+
+                    m_directory_configuration = std::nullopt;
+
+                    m_media_sources_watcher = nullptr;
+                    m_media_class_a_watcher = nullptr;
+                    m_media_class_b_watcher = nullptr;
+                }
                 if (ImGui::MenuItem("Exit")) { m_application_should_close = true; }
                 ImGui::EndMenu();
             }
@@ -291,8 +399,8 @@ private:
         }
     }
 
-    void showConfigureDirectoriesWindow(std::function<void(std::optional<ConfigureDirectoriesData>)> on_submit_callback) {
-        static ConfigureDirectoriesData data;
+    void showConfigureDirectoriesWindow(std::function<void(std::optional<DirectoryConfiguration>)> on_submit_callback) {
+        static DirectoryConfiguration data;
 
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize;
         ImGui::SetNextWindowSize({600.0f, 400.0f}, ImGuiCond_Once);
@@ -493,6 +601,29 @@ private:
             }
         }
         ImGui::End();
+    }
+
+    void filesListView(
+        const std::vector<std::string>& filepaths,
+        MediaType media_type,
+        std::function<void(const std::vector<std::string>&, MediaType, int)> on_file_selected_callback
+    ) {
+        namespace fs = std::filesystem;
+        for (int i = 0; i < static_cast<int>(filepaths.size()); i++) {
+
+            // Build label.
+            std::string file_icon;
+            if (media_type == MediaType::Image) { file_icon = ICON_FA_FILE_IMAGE; }
+            else if (media_type == MediaType::Audio) { file_icon = ICON_FA_FILE_AUDIO; }
+            else { file_icon = ICON_FA_FILE; }
+            std::string file_entry = file_icon + fs::path(filepaths.at(i)).filename().string();
+            
+            static int selected_index = -1;
+            if (ImGui::Selectable(file_entry.c_str(), selected_index == i)) {
+                selected_index = i;
+                on_file_selected_callback(filepaths, media_type, i);
+            }
+        }
     }
 };
 

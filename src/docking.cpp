@@ -4,6 +4,11 @@
 
 void setupDockingLayout(std::function<void(ImGuiID&)> layout_builder) {
     static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+    
+    // Temporarily: Since I haven't figured out how to round the tab headers for the docked window
+    // from the docking node.
+    dockspace_flags |= ImGuiDockNodeFlags_NoTabBar;
+    dockspace_flags |= ImGuiDockNodeFlags_NoDocking;
 
     // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
     // because it would be confusing to have two docking targets within each others.
