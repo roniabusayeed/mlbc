@@ -11,7 +11,20 @@ sources = files(
     'src/colors.cpp',
     'src/fileDialog.mm',
     'src/widgets.cpp',
-    'src/docking.cpp'
+    'src/docking.cpp',
+    'src/fileWatcher.cpp'
+)
+
+# efsw dependency (file watcher)
+efsw_include_directories = include_directories('vendors/efsw/include')
+efsw_lib_dir = join_paths(meson.current_source_dir(), 'vendors/efsw/lib')
+efsw_lib_dep = meson.get_compiler('cpp').find_library('efsw', static: true, dirs: efsw_lib_dir)
+efsw_dep = declare_dependency(
+    include_directories: efsw_include_directories,
+    dependencies: [
+        efsw_lib_dep,
+        dependency('CoreServices')
+    ]
 )
 
 # OpenGL dependencies (for graphics rendering).
@@ -119,6 +132,7 @@ dependencies = [
     imgui_dep,
     sfml_dep,
     json_dep,
+    efsw_dep,
     other_deps
 ]
 
