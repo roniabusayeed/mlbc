@@ -207,6 +207,67 @@ public:
         
         // Docked windows.
         ImGuiWindowFlags docked_window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+        if (ImGui::Begin(WINDOW_MEDIA_EDITOR, nullptr, docked_window_flags)) {
+
+            // Calculate layout measurements.
+            float available_width = ImGui::GetContentRegionAvail().x;
+            float button_width = 60.0f;
+            float horizontal_item_spacing = ImGui::GetStyle().ItemSpacing.x;
+            float slider_width = available_width - button_width - horizontal_item_spacing;
+
+            // Bias slider.
+            static float value;
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+            ImGui::PushItemWidth(slider_width);
+            ImGui::SliderFloat("###bias-slider-float", &value, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::PopItemWidth();
+            ImGui::PopStyleVar();
+
+            ImGui::SameLine();
+            
+            // Label button.
+            bool label_button_clicked = false;
+            
+            if (! m_current_media_filepath) { 
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
+            
+            label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
+            
+            if (! m_current_media_filepath) {
+                ImGui::PopStyleVar();
+                ImGui::PopItemFlag();
+            }
+
+            if (label_button_clicked) {
+                moveFile(
+                    m_current_media_filepath.value(),
+                    (value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
+                    [](const std::string& error_message) { std::cerr << error_message << std::endl; }
+                );
+
+                // Lock the media sources, remove the moved file and load the next one.
+                {
+                    std::lock_guard<std::mutex> lock(mutex_media_sources);
+                    auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
+                    if (it != m_media_sources->end()) {
+                        m_media_sources->erase(it);
+                    }
+
+                    // Load the next file if available.
+                    if (!m_media_sources->empty()) {
+                        m_current_media_filepath = m_media_sources->front();
+                        m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
+                    } else {
+                        m_current_media_filepath = std::nullopt;
+                        m_current_media_image_preview = std::nullopt;
+                    }
+                }
+            }
+        }
+        ImGui::End();
+        
         if (ImGui::Begin(WINDOW_FILES, nullptr, docked_window_flags)) {
             if (ImGui::CollapsingHeader("Source")) {
                 std::lock_guard<std::mutex> lock(mutex_media_sources);
@@ -265,67 +326,6 @@ public:
                 }
             } else if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Audio) {
                 // handle audio preview
-            }
-        }
-        ImGui::End();
-
-        if (ImGui::Begin(WINDOW_MEDIA_EDITOR, nullptr, docked_window_flags)) {
-
-            // Calculate layout measurements.
-            float available_width = ImGui::GetContentRegionAvail().x;
-            float button_width = 60.0f;
-            float horizontal_item_spacing = ImGui::GetStyle().ItemSpacing.x;
-            float slider_width = available_width - button_width - horizontal_item_spacing;
-
-            // Bias slider.
-            static float value;
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-            ImGui::PushItemWidth(slider_width);
-            ImGui::SliderFloat("###bias-slider-float", &value, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-            ImGui::PopItemWidth();
-            ImGui::PopStyleVar();
-
-            ImGui::SameLine();
-            
-            // Label button.
-            bool label_button_clicked = false;
-            
-            if (! m_current_media_filepath) { 
-                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-            }
-            
-            label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
-            
-            if (! m_current_media_filepath) {
-                ImGui::PopStyleVar();
-                ImGui::PopItemFlag();
-            }
-
-            if (label_button_clicked) {
-                moveFile(
-                    m_current_media_filepath.value(),
-                    (value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
-                    [](const std::string& error_message) { std::cerr << error_message << std::endl; }
-                );
-
-                // Lock the media sources, remove the moved file and load the next one.
-                {
-                    std::lock_guard<std::mutex> lock(mutex_media_sources);
-                    auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
-                    if (it != m_media_sources->end()) {
-                        m_media_sources->erase(it);
-                    }
-
-                    // Load the next file if available.
-                    if (!m_media_sources->empty()) {
-                        m_current_media_filepath = m_media_sources->front();
-                        m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
-                    } else {
-                        m_current_media_filepath = std::nullopt;
-                        m_current_media_image_preview = std::nullopt;
-                    }
-                }
             }
         }
         ImGui::End();
