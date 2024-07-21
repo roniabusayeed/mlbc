@@ -491,6 +491,10 @@ private:
                     m_media_class_a_watcher = nullptr;
                     m_media_class_b_watcher = nullptr;
                 }
+                if (ImGui::MenuItem("Close Preview")) {
+                    m_current_media_image_preview = std::nullopt;
+                    m_current_media_filepath = std::nullopt;
+                }
                 if (ImGui::MenuItem("Exit")) { m_application_should_close = true; }
                 ImGui::EndMenu();
             }
@@ -724,9 +728,7 @@ private:
             else { file_icon = ICON_FA_FILE; }
             std::string file_entry = file_icon + " " + fs::path(filepaths.at(i)).filename().string();
             
-            static int selected_index = -1;
-            if (ImGui::Selectable(file_entry.c_str(), selected_index == i)) {
-                selected_index = i;
+            if (ImGui::Selectable(file_entry.c_str())) {
                 on_file_selected_callback(filepaths, media_type, i);
             }
         }
