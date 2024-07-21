@@ -243,6 +243,7 @@ public:
                 ImGui::PopItemFlag();
             }
 
+            // TODO: Put it in a function.
             // Label button click handler.
             if (label_button_clicked) {
                 moveFile(
@@ -320,12 +321,16 @@ public:
         ImGui::End();
 
         if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags)) {
-            if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Image) {
-                if (m_current_media_image_preview.has_value()) {
-                    ui::widget::ImageView(m_current_media_image_preview.value());
+            if (m_directory_configuration.has_value()) {
+                if (m_directory_configuration->mediaType == MediaType::Image) {
+                    if (m_current_media_filepath && m_current_media_image_preview) {
+                        SelectableText(m_current_media_filepath.value());
+                        ui::widget::ImageView(m_current_media_image_preview.value());
+                    }
+                } 
+                else if (m_directory_configuration->mediaType == MediaType::Audio) {
+
                 }
-            } else if (m_directory_configuration.has_value() && m_directory_configuration->mediaType == MediaType::Audio) {
-                // handle audio preview
             }
         }
         ImGui::End();
@@ -406,7 +411,7 @@ public:
                     {
                         std::lock_guard<std::mutex> lock(mutex_media_sources);
                         if (! m_media_sources->empty()) {
-                            m_current_media_filepath = m_media_sources->front();
+                            m_current_media_filepath = m_media_sources->front();    // TODO: Replace with a function.
                             m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
                         }
                     }
@@ -765,6 +770,16 @@ private:
         }
 
         m_current_media_filepath = filepath;
+    }
+
+    void SelectableText(const std::string& text, bool fit_width = true) {
+        if (fit_width) {
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        }
+        
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
+        ImGui::InputText("##display-selectable-text", const_cast<char*>(text.c_str()), text.size() + 1, ImGuiInputTextFlags_ReadOnly);
+        ImGui::PopStyleColor();
     }
 };
 
