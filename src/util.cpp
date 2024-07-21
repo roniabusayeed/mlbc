@@ -196,3 +196,40 @@ void loadMediaFilesAsync(const std::string& directory, MediaType mediaType, std:
         }
     }).detach();
 }
+
+void moveFile(const std::string& filepath, const std::string& dest_directory, std::function<void(const std::string& error_message)> error_callback) {
+    namespace fs = std::filesystem;
+
+    try {
+        fs::path src_path(filepath);
+        fs::path dest_path(dest_directory);
+
+        // Check if source file exists.
+        if (!fs::exists(src_path)) {
+            throw std::runtime_error("Source file does not exist: " + filepath);
+        }
+
+        // Create destination directory if it doesn't exist.
+        if (!fs::exists(dest_path)) {
+            fs::create_directories(dest_path);
+        }
+
+        // Check if destination is a directory.
+        if (!fs::is_directory(dest_path)) {
+            throw std::runtime_error("Destination path is not a directory: " + dest_directory);
+        }
+
+        // Construct the destination file path.
+        fs::path dest_file_path = dest_path / src_path.filename();
+
+        // Check if a file with the same name already exists at the destination.
+        if (fs::exists(dest_file_path)) {
+            throw std::runtime_error("A file with the same name already exists at the destination: " + dest_file_path.string());
+        }
+
+        // Move the file
+        fs::rename(src_path, dest_file_path);
+    } catch (const std::exception& e) {
+        error_callback(e.what());
+    }
+}

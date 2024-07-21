@@ -101,3 +101,4 @@ enum class MediaType: int32_t {
 std::vector<std::string> getValidExtensions(MediaType media_type);
 std::vector<std::string> loadMediaFiles(const std::string& directory, MediaType media_type);
 void loadMediaFilesAsync(const std::string& directory, MediaType mediaType, std::function<void(const std::vector<std::string>&)> on_media_files_loaded);
+void moveFile(const std::string& filepath, const std::string& dest_directory, std::function<void(const std::string& error_message)> error_callback);
