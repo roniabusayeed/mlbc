@@ -288,31 +288,44 @@ public:
             ImGui::SameLine();
             
             // Label button.
-            bool button_clicked = false;
+            bool label_button_clicked = false;
             
             if (! m_current_media_filepath) { 
                 ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
             }
             
-            button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
+            label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
             
             if (! m_current_media_filepath) {
                 ImGui::PopStyleVar();
                 ImGui::PopItemFlag();
             }
 
-            if (button_clicked) {
+            if (label_button_clicked) {
                 moveFile(
                     m_current_media_filepath.value(),
-                    (value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory), 
-                    [](const std::string& error_message){ std::cerr << error_message << std::endl; }
+                    (value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
+                    [](const std::string& error_message) { std::cerr << error_message << std::endl; }
                 );
 
-                m_current_media_image_preview = std::nullopt;
-                m_current_media_filepath = std::nullopt;
+                // Lock the media sources, remove the moved file and load the next one.
+                {
+                    std::lock_guard<std::mutex> lock(mutex_media_sources);
+                    auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
+                    if (it != m_media_sources->end()) {
+                        m_media_sources->erase(it);
+                    }
 
-
+                    // Load the next file if available.
+                    if (!m_media_sources->empty()) {
+                        m_current_media_filepath = m_media_sources->front();
+                        m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
+                    } else {
+                        m_current_media_filepath = std::nullopt;
+                        m_current_media_image_preview = std::nullopt;
+                    }
+                }
             }
         }
         ImGui::End();
@@ -325,24 +338,25 @@ public:
             showConfigureDirectoriesWindow([this](std::optional<DirectoryConfiguration> data) {
                 if (data) {
 
-                    // Initially load (asynchronously) the configured directories when a directory configuration is set.
-
-                    loadMediaFilesAsync(data->sourceDirectory, data->mediaType, [this, data](const std::vector<std::string>& files) {
-                        std::lock_guard<std::mutex> lock(mutex_media_sources);
-                        m_media_sources = std::move(files);
-                    });
-
-                    loadMediaFilesAsync(data->classADirectory, data->mediaType, [this, data](const std::vector<std::string>& files) {
-                        std::lock_guard<std::mutex> lock(mutex_media_class_a);
-                        m_media_class_a = std::move(files);
-                    });
-
-                    loadMediaFilesAsync(data->classBDirectory, data->mediaType, [this, data](const std::vector<std::string>& files) {
-                        std::lock_guard<std::mutex> lock(mutex_media_class_b);
-                        m_media_class_b = std::move(files);
-                    });
-
                     m_directory_configuration = data;
+
+                    // Initially load (asynchronously) the configured directories when a 
+                    // directory configuration is set.
+
+                    std::future<void> media_sources_future = std::async([this, data] {
+                        std::lock_guard<std::mutex> lock(mutex_media_sources);
+                        m_media_sources = loadMediaFiles(data->sourceDirectory, data->mediaType);
+                    });
+
+                    std::future<void> media_class_a_future = std::async([this, data] {
+                        std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                        m_media_class_a = loadMediaFiles(data->classADirectory, data->mediaType);
+                    });
+
+                    std::future<void> media_class_b_future = std::async([this, data] {
+                        std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                        m_media_class_b = loadMediaFiles(data->classBDirectory, data->mediaType);
+                    });
 
                     // Set up watchers to asynchronously watch the configured directories for changes.
                     // If there are any changes to the configured directories, reload them.
@@ -381,6 +395,20 @@ public:
                         );
                     } catch (const std::runtime_error& re) {
                         std::cerr << re.what() << std::endl;
+                    }
+
+                    // Wait on the futures to finish.
+                    media_sources_future.get();
+                    media_class_a_future.get();
+                    media_class_b_future.get();
+
+                    // Load the first media source (if any) for preview.
+                    {
+                        std::lock_guard<std::mutex> lock(mutex_media_sources);
+                        if (! m_media_sources->empty()) {
+                            m_current_media_filepath = m_media_sources->front();
+                            m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
+                        }
                     }
                 }
             });
