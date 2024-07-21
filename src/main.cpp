@@ -206,7 +206,12 @@ public:
         showMainMenuBar();
         
         // Docked windows.
-        ImGuiWindowFlags docked_window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+        ImGuiWindowFlags docked_window_flags = ImGuiWindowFlags_None;
+        docked_window_flags |= ImGuiWindowFlags_NoMove;
+        docked_window_flags |= ImGuiWindowFlags_NoResize;
+        docked_window_flags |= ImGuiWindowFlags_NoCollapse;
+        docked_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+        
         if (ImGui::Begin(WINDOW_MEDIA_EDITOR, nullptr, docked_window_flags)) {
 
             // Calculate layout measurements.
@@ -226,28 +231,27 @@ public:
             ImGui::SameLine();
             
             // Label button.
-            bool label_button_clicked = false;
-            
             if (! m_current_media_filepath) { 
                 ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
             }
             
-            label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
+            bool label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
             
             if (! m_current_media_filepath) {
                 ImGui::PopStyleVar();
                 ImGui::PopItemFlag();
             }
 
+            // Label button click handler.
             if (label_button_clicked) {
                 moveFile(
                     m_current_media_filepath.value(),
                     (value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
-                    [](const std::string& error_message) { std::cerr << error_message << std::endl; }
+                    [](const std::string& error_message) { std::cerr << error_message << std::endl; }   // TODO: Display a dialog in a modal window instead of logging to console.
                 );
 
-                // Lock the media sources, remove the moved file and load the next one.
+                // Lock the mutex for media sources, remove the moved file and load the next one.
                 {
                     std::lock_guard<std::mutex> lock(mutex_media_sources);
                     auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
@@ -255,13 +259,12 @@ public:
                         m_media_sources->erase(it);
                     }
 
-                    // Load the next file if available.
+                    // Load the next media for preview if available.
+                    // Otherwise, clear the media preview.
                     if (!m_media_sources->empty()) {
-                        m_current_media_filepath = m_media_sources->front();
-                        m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
+                        loadCurrentPreviewAndFilepath(m_media_sources->front());
                     } else {
-                        m_current_media_filepath = std::nullopt;
-                        m_current_media_image_preview = std::nullopt;
+                        clearCurrentPreviewAndFilepath();
                     }
                 }
             }
@@ -277,8 +280,7 @@ public:
                         m_media_sources.value(),
                         m_directory_configuration->mediaType,
                         [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            m_current_media_image_preview = Image::loadFromFile(filepaths.at(selected_index));
-                            m_current_media_filepath = filepaths.at(selected_index);
+                            loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
                         }
                     );
                     ImGui::Unindent();
@@ -293,8 +295,7 @@ public:
                         m_media_class_a.value(),
                         m_directory_configuration->mediaType,
                         [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            m_current_media_image_preview = Image::loadFromFile(filepaths.at(selected_index));
-                            m_current_media_filepath = filepaths.at(selected_index);
+                            loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
                         }
                     );
                     ImGui::Unindent();
@@ -309,8 +310,7 @@ public:
                         m_media_class_b.value(),
                         m_directory_configuration->mediaType,
                         [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            m_current_media_image_preview = Image::loadFromFile(filepaths.at(selected_index));
-                            m_current_media_filepath = filepaths.at(selected_index);
+                            loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
                         }
                     );
                     ImGui::Unindent();
@@ -492,8 +492,7 @@ private:
                     m_media_class_b_watcher = nullptr;
                 }
                 if (ImGui::MenuItem("Close Preview")) {
-                    m_current_media_image_preview = std::nullopt;
-                    m_current_media_filepath = std::nullopt;
+                    clearCurrentPreviewAndFilepath();
                 }
                 if (ImGui::MenuItem("Exit")) { m_application_should_close = true; }
                 ImGui::EndMenu();
@@ -732,6 +731,40 @@ private:
                 on_file_selected_callback(filepaths, media_type, i);
             }
         }
+    }
+
+    void clearCurrentPreviewAndFilepath() {
+
+        // If directories have not been configured, then closing
+        // preview should have no effect.
+        if (! m_directory_configuration) {
+            return;
+        }
+
+        if (m_directory_configuration->mediaType == MediaType::Image) {
+            m_current_media_image_preview = std::nullopt;
+        } else if (m_directory_configuration->mediaType == MediaType::Audio) {
+            // clear audio specific previews in the future.
+        }
+
+        m_current_media_filepath = std::nullopt;
+    }
+
+    void loadCurrentPreviewAndFilepath(const std::string& filepath) {
+        
+        // If directories have not been configured, then closing
+        // preview should have no effect.
+        if (! m_directory_configuration) {
+            return;
+        }
+
+        if (m_directory_configuration->mediaType == MediaType::Image) {
+            m_current_media_image_preview = Image::loadFromFile(filepath);
+        } else if (m_directory_configuration->mediaType == MediaType::Audio) {
+            // load audio specific previews in the future.
+        }
+
+        m_current_media_filepath = filepath;
     }
 };
 
