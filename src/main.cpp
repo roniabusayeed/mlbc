@@ -10,6 +10,8 @@
 #include <SDL_opengl.h>
 #include <stdexcept>
 #include <future>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <SFML/System.hpp>
 #include <SFML/Audio.hpp>
@@ -60,6 +62,8 @@ private:
 
     std::optional<Image>                                            m_current_media_image_preview;
     std::optional<std::string>                                      m_current_media_filepath;
+
+    glm::vec4                                                       m_preview_bg_color;
 
     // Mutexes to protect shared resources.
     std::mutex                                                      mutex_media_sources;
@@ -168,6 +172,9 @@ public:
         // Load application UI icon font.
         m_ui_icon_regular_font = ui::loadIconFont(APPLICATION_UI_ICON_FONT_REGULAR_FILEPATH, APPLICATION_UI_FONT_SIZE);
         m_ui_icon_solid_font = ui::loadIconFont(APPLICATION_UI_ICON_FONT_SOLID_FILEPATH, APPLICATION_UI_FONT_SIZE);
+
+        // Initially the preview background color is the same as the window background color.
+        m_preview_bg_color = m_theme->WindowBg;
     }
 
     ~MLBC() {
@@ -242,6 +249,12 @@ public:
                 ImGui::PopStyleVar();
                 ImGui::PopItemFlag();
             }
+
+            // Preview background color picker.
+            ImGuiColorEditFlags preview_bg_color_edit_flags = ImGuiColorEditFlags_None;
+            preview_bg_color_edit_flags |= ImGuiColorEditFlags_NoInputs;
+            preview_bg_color_edit_flags |= ImGuiColorEditFlags_AlphaBar;
+            ImGui::ColorEdit4("Preview Background", glm::value_ptr(m_preview_bg_color), preview_bg_color_edit_flags);
 
             // TODO: Put it in a function.
             // Label button click handler.
@@ -360,6 +373,7 @@ public:
         }
         ImGui::End();
 
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, toImVec4(m_preview_bg_color));
         if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags)) {
             if (m_directory_configuration.has_value()) {
                 if (m_directory_configuration->mediaType == MediaType::Image) {
@@ -374,6 +388,7 @@ public:
             }
         }
         ImGui::End();
+        ImGui::PopStyleColor();
 
         // Other windows.
         if (m_ui_flags.ConfigureDirectories) {
