@@ -273,48 +273,85 @@ public:
         ImGui::End();
         
         if (ImGui::Begin(WINDOW_FILES, nullptr, docked_window_flags)) {
-            if (ImGui::CollapsingHeader("Source")) {
-                std::lock_guard<std::mutex> lock(mutex_media_sources);
-                if (m_media_sources.has_value()) {
-                    ImGui::Indent();
-                    filesListView(
-                        m_media_sources.value(),
-                        m_directory_configuration->mediaType,
-                        [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
-                        }
-                    );
-                    ImGui::Unindent();
-                }  
-            }
+            if (m_directory_configuration) {
+                
+                // Build header labels.
 
-            if (ImGui::CollapsingHeader("Class A")) {
-                std::lock_guard<std::mutex> lock(mutex_media_class_a);
-                if (m_media_class_a.has_value()) {
-                    ImGui::Indent();
-                    filesListView(
-                        m_media_class_a.value(),
-                        m_directory_configuration->mediaType,
-                        [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
-                        }
-                    );
-                    ImGui::Unindent();
+                // Build header label for media sources.
+                size_t medie_sources_count = 0;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_media_sources);
+                    medie_sources_count = m_media_sources->size();
                 }
-            }
-            
-            if (ImGui::CollapsingHeader("Class B")) {
-                std::lock_guard<std::mutex> lock(mutex_media_class_b);
-                if (m_media_class_b.has_value()) {
-                    ImGui::Indent();
-                    filesListView(
-                        m_media_class_b.value(),
-                        m_directory_configuration->mediaType,
-                        [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
-                            loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
-                        }
-                    );
-                    ImGui::Unindent();
+                std::stringstream media_sources_header_label_ss;
+                media_sources_header_label_ss << "Source  [" << medie_sources_count << "]";
+                std::string media_sources_header_label = media_sources_header_label_ss.str();
+
+                // Build header label for media class a.
+                size_t media_class_a_count = 0;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                    media_class_a_count = m_media_class_a->size();
+                }
+                std::stringstream media_class_a_header_label_ss;
+                media_class_a_header_label_ss << "Class A [" << media_class_a_count << "]";
+                std::string media_class_a_header_label = media_class_a_header_label_ss.str();
+
+                // Build header label for media class b.
+                size_t media_class_b_count = 0;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                    media_class_b_count = m_media_class_b->size();
+                }
+                std::stringstream media_class_b_header_label_ss;
+                media_class_b_header_label_ss << "Class A [" << media_class_b_count << "]";
+                std::string media_class_b_header_label = media_class_b_header_label_ss.str();
+
+                // Source.
+                if (ImGui::CollapsingHeader(media_sources_header_label.c_str())) {
+                    std::lock_guard<std::mutex> lock(mutex_media_sources);
+                    if (m_media_sources.has_value()) {
+                        ImGui::Indent();
+                        filesListView(
+                            m_media_sources.value(),
+                            m_directory_configuration->mediaType,
+                            [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                                loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
+                            }
+                        );
+                        ImGui::Unindent();
+                    }  
+                }
+
+                // Class A.
+                if (ImGui::CollapsingHeader(media_class_a_header_label.c_str())) {
+                    std::lock_guard<std::mutex> lock(mutex_media_class_a);
+                    if (m_media_class_a.has_value()) {
+                        ImGui::Indent();
+                        filesListView(
+                            m_media_class_a.value(),
+                            m_directory_configuration->mediaType,
+                            [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                                loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
+                            }
+                        );
+                        ImGui::Unindent();
+                    }
+                }
+
+                if (ImGui::CollapsingHeader(media_class_b_header_label.c_str())) {
+                    std::lock_guard<std::mutex> lock(mutex_media_class_b);
+                    if (m_media_class_b.has_value()) {
+                        ImGui::Indent();
+                        filesListView(
+                            m_media_class_b.value(),
+                            m_directory_configuration->mediaType,
+                            [this](const std::vector<std::string>& filepaths, MediaType media_type, int selected_index){
+                                loadCurrentPreviewAndFilepath(filepaths.at(selected_index));
+                            }
+                        );
+                        ImGui::Unindent();
+                    }
                 }
             }
         }
