@@ -219,6 +219,11 @@ public:
             float button_width = 60.0f;
             float horizontal_item_spacing = ImGui::GetStyle().ItemSpacing.x;
             float slider_width = available_width - button_width - horizontal_item_spacing;
+            
+            if (! m_current_media_filepath) { 
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
 
             // Bias slider.
             static float value;
@@ -231,11 +236,6 @@ public:
             ImGui::SameLine();
             
             // Label button.
-            if (! m_current_media_filepath) { 
-                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-            }
-            
             bool label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
             
             if (! m_current_media_filepath) {
@@ -278,13 +278,14 @@ public:
                 // Build header labels.
 
                 // Build header label for media sources.
-                size_t medie_sources_count = 0;
+                size_t media_sources_count = 0;
                 {
                     std::lock_guard<std::mutex> lock(mutex_media_sources);
-                    medie_sources_count = m_media_sources->size();
+                    media_sources_count = m_media_sources->size();
                 }
                 std::stringstream media_sources_header_label_ss;
-                media_sources_header_label_ss << "Source  [" << medie_sources_count << "]";
+                media_sources_header_label_ss << "Source  [" << media_sources_count << "]";
+                media_sources_header_label_ss << "###media-sources-header";
                 std::string media_sources_header_label = media_sources_header_label_ss.str();
 
                 // Build header label for media class a.
@@ -295,6 +296,7 @@ public:
                 }
                 std::stringstream media_class_a_header_label_ss;
                 media_class_a_header_label_ss << "Class A [" << media_class_a_count << "]";
+                media_class_a_header_label_ss << "###media-class-a-header";
                 std::string media_class_a_header_label = media_class_a_header_label_ss.str();
 
                 // Build header label for media class b.
@@ -305,6 +307,7 @@ public:
                 }
                 std::stringstream media_class_b_header_label_ss;
                 media_class_b_header_label_ss << "Class A [" << media_class_b_count << "]";
+                media_class_b_header_label_ss << "###media-class-b-header";
                 std::string media_class_b_header_label = media_class_b_header_label_ss.str();
 
                 // Source.
