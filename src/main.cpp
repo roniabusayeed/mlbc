@@ -761,12 +761,38 @@ private:
                 on_submit_callback(std::nullopt);
             }
             ImGui::SameLine();
-            if (ImGui::Button("Apply", button_size)) {
 
-                // TODO: Validate the data.
-                // If validation is successful, set  ConfigureDirectories flag to false.
-                m_ui_flags.ConfigureDirectories = false;
-                on_submit_callback(data);
+            static std::optional<std::string> message;
+            const char* INVALID_DIRECTORY_CONFIGURATION_POPUP = "Invalid Directory Configuration";
+
+            if (ImGui::Button("Apply", button_size)) {
+                auto validation_result = validateDirectoryConfiguration(data);
+                bool success = validation_result.first;
+                message = validation_result.second;
+
+                if (!success) {
+                    ImGui::OpenPopup(INVALID_DIRECTORY_CONFIGURATION_POPUP);
+                } else {
+
+                    // If validation is successful, set  ConfigureDirectories flag to false.
+                    m_ui_flags.ConfigureDirectories = false;
+                    on_submit_callback(data);
+                }
+            }
+
+            // Popup Modal window for invalid directory configuration.
+            {
+                // Always center this window when appearing
+                ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+                if (ImGui::BeginPopupModal(INVALID_DIRECTORY_CONFIGURATION_POPUP, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::Text("%s", message->c_str());
+                    ImGui::Spacing();
+                    if (ImGui::Button("OK", {ImGui::GetContentRegionAvail().x, 0.0f})) { ImGui::CloseCurrentPopup(); }
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::EndPopup();
+                }
             }
         }
         ImGui::End();
@@ -835,6 +861,62 @@ private:
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
         ImGui::InputText("##display-selectable-text", const_cast<char*>(text.c_str()), text.size() + 1, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopStyleColor();
+    }
+
+    std::pair<bool, std::optional<std::string>> validateDirectoryConfiguration(const DirectoryConfiguration& dir_config) {
+        namespace fs = std::filesystem;
+
+        const char* home_dir = std::getenv("HOME");
+        if (home_dir == nullptr) {
+            return {false, "Unable to determine the user's home directory."};
+        }
+        fs::path home_path(home_dir);
+
+        auto check_directory = [&](const fs::path& dir) -> std::optional<std::string> {
+            if (dir.empty()) {
+                return "directory is empty.";
+            }
+            if (dir.string().find(home_path.string()) != 0) {
+                return "directory " + dir.string() + " is not under the user's home directory.";
+            }
+            if (!fs::exists(dir)) {
+                return "directory " + dir.string() + " does not exist.";
+            }
+            if (!fs::is_directory(dir)) {
+                return "path " + dir.string() + " is not a directory.";
+            }
+            auto perms = fs::status(dir).permissions();
+            if ((perms & fs::perms::owner_write) == fs::perms::none ||
+                (perms & fs::perms::owner_read) == fs::perms::none ||
+                (perms & fs::perms::owner_exec) == fs::perms::none) {
+                return "directory " + dir.string() + " does not have sufficient permissions.";
+            }
+            return std::nullopt;
+        };
+
+        std::optional<std::string> message;
+
+        message = check_directory(dir_config.sourceDirectory);
+        if (message) return {false, "Source " + message.value()};
+
+        message = check_directory(dir_config.classADirectory);
+        if (message) return {false, "Class A " + message.value()};
+
+        message = check_directory(dir_config.classBDirectory);
+        if (message) return {false, "Class B " + message.value()};
+
+        // Check if directories are distinct.
+        if (fs::equivalent(dir_config.sourceDirectory, dir_config.classADirectory) ||
+            fs::equivalent(dir_config.sourceDirectory, dir_config.classBDirectory) ||
+            fs::equivalent(dir_config.classADirectory, dir_config.classBDirectory)) {
+            return {false, "Source, Class A, and Class B directories must be distinct."};
+        }
+
+        fs::path csv_dir = fs::path(dir_config.outputFilePath).parent_path();
+        message = check_directory(csv_dir);
+        if (message) return {false, "Output file " + message.value()};
+
+        return {true, std::nullopt};
     }
 };
 
