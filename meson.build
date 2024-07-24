@@ -117,6 +117,11 @@ json_dep = declare_dependency(
     include_directories: json_include_directories
 )
 
+csv2_include_directories = include_directories('vendors/csv2')
+csv2_dep = declare_dependency(
+    include_directories: csv2_include_directories
+)
+
 # Additional project dependencies.
 other_deps = declare_dependency(
     dependencies: [
@@ -133,6 +138,7 @@ dependencies = [
     imgui_dep,
     sfml_dep,
     json_dep,
+    csv2_dep,
     efsw_dep,
     other_deps
 ]

@@ -10,11 +10,14 @@
 #include <SDL_opengl.h>
 #include <stdexcept>
 #include <future>
+#include <algorithm>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <SFML/System.hpp>
 #include <SFML/Audio.hpp>
+
+#include <csv2.hpp>
 
 #include "colors.h"
 #include "util.h"
@@ -64,6 +67,8 @@ private:
     std::optional<std::string>                                      m_current_media_filepath;
 
     glm::vec4                                                       m_preview_bg_color;
+
+    float                                                           m_bias_value;
 
     // Mutexes to protect shared resources.
     std::mutex                                                      mutex_media_sources;
@@ -233,10 +238,9 @@ public:
             }
 
             // Bias slider.
-            static float value;
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
             ImGui::PushItemWidth(slider_width);
-            ImGui::SliderFloat("###bias-slider-float", &value, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::SliderFloat("###bias-slider-float", &m_bias_value, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
             ImGui::PopItemWidth();
             ImGui::PopStyleVar();
 
@@ -261,11 +265,14 @@ public:
             if (label_button_clicked) {
                 moveFile(
                     m_current_media_filepath.value(),
-                    (value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
+                    (m_bias_value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
                     [](const std::string& error_message) { std::cerr << error_message << std::endl; }   // TODO: Display a dialog in a modal window instead of logging to console.
                 );
 
-                // Lock the mutex for media sources, remove the moved file and load the next one.
+                // Upldate the output file.
+                updateOutputFile();
+
+                // Load the next media for preview (if any).
                 {
                     std::lock_guard<std::mutex> lock(mutex_media_sources);
                     auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
@@ -319,7 +326,7 @@ public:
                     media_class_b_count = m_media_class_b->size();
                 }
                 std::stringstream media_class_b_header_label_ss;
-                media_class_b_header_label_ss << "Class A [" << media_class_b_count << "]";
+                media_class_b_header_label_ss << "Class B [" << media_class_b_count << "]";
                 media_class_b_header_label_ss << "###media-class-b-header";
                 std::string media_class_b_header_label = media_class_b_header_label_ss.str();
 
@@ -917,6 +924,72 @@ private:
         if (message) return {false, "Output file " + message.value()};
 
         return {true, std::nullopt};
+    }
+
+    void updateOutputFile() {
+        using namespace csv2;
+        namespace fs = std::filesystem;
+
+        const std::vector<std::string> header = {"file", "bias"};
+        const std::string filename = fs::path(m_current_media_filepath.value()).filename().string();
+
+        // Load the content of the csv file to memory.
+        // Remove record(s) of the current file from the loaded contents.
+        // Add the record of the current file to the loaded contents.
+        // Write the loaded contents back to file.
+
+        std::vector<std::vector<std::string>> rows;
+
+        // If the file exists, assume it's valid.
+        if (fs::exists(m_directory_configuration->outputFilePath)) {
+            Reader<
+                delimiter<','>,
+                quote_character<'"'>,
+                first_row_is_header<true>,
+                trim_policy::trim_whitespace
+            > reader;
+        
+            // Load the content of the csv file to memory.
+            if (reader.mmap(m_directory_configuration->outputFilePath)) {
+                for (auto row : reader) {
+                    std::vector<std::string> row_vector;
+                    for (auto cell : row) {
+                        row_vector.emplace_back(cell.read_view());
+                    }
+                    
+                    // Keep the row only if it's not a record of the current file and
+                    // number of fields matches that of the header titles.
+                    if (row_vector.size() == header.size() && row_vector.front() != filename) {
+                        rows.emplace_back(row_vector);
+                    }
+                }
+            } else {
+                throw std::runtime_error("couldn't read CSV file " + m_directory_configuration->outputFilePath);
+            }
+        }
+
+        // Add the record of the current file to the loaded contents.
+        rows.push_back({filename, toString(m_bias_value)});
+
+        // Write the loaded contents back to file.
+        std::ofstream outfile(m_directory_configuration->outputFilePath);
+        if (! outfile.is_open()) {
+            throw std::runtime_error("couldn't open file " + m_directory_configuration->outputFilePath + " for writing.");
+        }
+
+        // Write header.
+        for (size_t i = 0; i < header.size(); i++) {
+            if (i) {
+                outfile << ',';
+            }
+            outfile << header.at(i);
+        }
+        outfile << '\n';
+
+        // Write update rows.
+        Writer<delimiter<','>> writer(outfile);
+        writer.write_rows(rows);
+        outfile.close();
     }
 };
 
