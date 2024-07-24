@@ -260,12 +260,18 @@ public:
             preview_bg_color_edit_flags |= ImGuiColorEditFlags_AlphaBar;
             ImGui::ColorEdit4("Preview Background", glm::value_ptr(m_preview_bg_color), preview_bg_color_edit_flags);
 
+            const char* ERROR_MOVING_FILE_POPUP = "Error Moving File";
+            static std::string error_moving_file_pop_up_message;
+
             // Label button click handler.
             if (label_button_clicked) {
                 moveFile(
                     m_current_media_filepath.value(),
                     (m_bias_value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
-                    [](const std::string& error_message) { std::cerr << error_message << std::endl; }   // TODO: Display a dialog in a modal window instead of logging to console.
+                    [&](const std::string& error_message) {
+                        error_moving_file_pop_up_message = error_message;
+                        ImGui::OpenPopup(ERROR_MOVING_FILE_POPUP);
+                    }
                 );
 
                 // Upldate the output file.
@@ -289,7 +295,15 @@ public:
                 }
             }
 
-            
+            // Error moving file popup.
+            ImGui::SetNextWindowSize(toImVec2(ERROR_POPUP_DIALOG_WINDOW_SIZE));
+            if (ImGui::BeginPopupModal(ERROR_MOVING_FILE_POPUP, nullptr, ImGuiWindowFlags_NoResize)) {
+                ImGui::TextWrapped("%s", error_moving_file_pop_up_message.c_str());
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing());
+                if (ImGui::Button("OK", {ImGui::GetContentRegionAvail().x, 0.0f}) ) { ImGui::CloseCurrentPopup(); }
+                ImGui::SetItemDefaultFocus();
+                ImGui::EndPopup();
+            }
         }
         ImGui::End();
         
@@ -800,9 +814,10 @@ private:
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
                 ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-                if (ImGui::BeginPopupModal(INVALID_DIRECTORY_CONFIGURATION_POPUP, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::Text("%s", message->c_str());
-                    ImGui::Spacing();
+                ImGui::SetNextWindowSize(toImVec2(ERROR_POPUP_DIALOG_WINDOW_SIZE));
+                if (ImGui::BeginPopupModal(INVALID_DIRECTORY_CONFIGURATION_POPUP, nullptr, ImGuiWindowFlags_NoResize)) {
+                    ImGui::TextWrapped("%s", message->c_str());
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing());
                     if (ImGui::Button("OK", {ImGui::GetContentRegionAvail().x, 0.0f})) { ImGui::CloseCurrentPopup(); }
                     ImGui::SetItemDefaultFocus();
                     ImGui::EndPopup();

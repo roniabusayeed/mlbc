@@ -17,3 +17,5 @@ const float         APPLICATION_UI_FONT_SIZE                    = 16.0f;
 const std::string   APPLICATION_UI_ICON_FONT_DIR                = joinPaths(APPLICATION_RESOURCE_DIR, "icon-fonts");
 const std::string   APPLICATION_UI_ICON_FONT_REGULAR_FILEPATH   = joinPaths(APPLICATION_UI_ICON_FONT_DIR, "fa-regular-400.ttf");
 const std::string   APPLICATION_UI_ICON_FONT_SOLID_FILEPATH     = joinPaths(APPLICATION_UI_ICON_FONT_DIR, "fa-solid-900.ttf");
+
+const glm::vec2     ERROR_POPUP_DIALOG_WINDOW_SIZE              = {400.0f, 200.0f};
