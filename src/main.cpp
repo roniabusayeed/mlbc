@@ -409,6 +409,11 @@ public:
             
             showConfigureDirectoriesWindow([this](std::optional<DirectoryConfiguration> data) {
                 if (data) {
+                    
+                    // Audio support is not available yet.
+                    if (data->mediaType == MediaType::Audio) {
+                        return;
+                    }
 
                     m_directory_configuration = data;
 
