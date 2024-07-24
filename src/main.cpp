@@ -68,7 +68,8 @@ private:
 
     glm::vec4                                                       m_preview_bg_color;
 
-    float                                                           m_bias_value;
+    float                                                           m_bias_value{ 0.0f };
+    float                                                           m_bias_sensitivity{ 0.1f };
 
     // Mutexes to protect shared resources.
     std::mutex                                                      mutex_media_sources;
@@ -79,6 +80,11 @@ private:
     const char* WINDOW_MEDIA_PREVIEW = "Media Preview";
     const char* WINDOW_MEDIA_EDITOR = "Media Editor";
     const char* WINDOW_CONFIGURE_DIRECTORIES = "Configure Directories";
+
+    const char* ERROR_MOVING_FILE_POPUP = "Error Moving File";
+    std::string m_error_moving_file_pop_up_message;
+
+    bool m_keyboard_label_button_pressed{false };
 
 public:
     MLBC(const char* name, int32_t width, int32_t height) {
@@ -147,7 +153,7 @@ public:
             exit(EXIT_FAILURE);
         }
 
-        // Set the background clear/refreh color.
+        // Set the background clear/refresh color.
         glClearColor(ui::COLOR_DARK_GREY.x, ui::COLOR_DARK_GREY.y, ui::COLOR_DARK_GREY.z, ui::COLOR_DARK_GREY.w);
 
         // Setup Dear ImGui context.
@@ -182,7 +188,7 @@ public:
         m_preview_bg_color = m_theme->WindowBg;
     }
 
-    ~MLBC() {
+    ~MLBC() override {
         
         // Free ImGui resources.
         ImGui_ImplOpenGL3_Shutdown();
@@ -202,8 +208,8 @@ public:
     void update() override {
         setupDockingLayout([=](ImGuiID& dockspace_id){
             // split the dockspace into 2 nodes -- DockBuilderSplitNode takes in the following args in the following order
-            // window ID to split, direction, fraction (between 0 and 1), the final two setting let's us choose which id we
-            // want (which ever one we DON'T set as NULL, will be returned by the function) out_id_at_dir is the id of the
+            // window ID to split, direction, fraction (between 0 and 1), the final two setting let us choose which id we
+            // want (whichever one we DON'T set as NULL, will be returned by the function) out_id_at_dir is the id of the
             // node in the direction we specified earlier, out_id_at_opposite_dir is in the opposite direction.
             auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.35f, nullptr, &dockspace_id);
             auto dock_id_down = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.4f, nullptr, &dockspace_id);
@@ -260,45 +266,22 @@ public:
             preview_bg_color_edit_flags |= ImGuiColorEditFlags_AlphaBar;
             ImGui::ColorEdit4("Preview Background", glm::value_ptr(m_preview_bg_color), preview_bg_color_edit_flags);
 
-            const char* ERROR_MOVING_FILE_POPUP = "Error Moving File";
-            static std::string error_moving_file_pop_up_message;
-
             // Label button click handler.
             if (label_button_clicked) {
-                moveFile(
-                    m_current_media_filepath.value(),
-                    (m_bias_value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
-                    [&](const std::string& error_message) {
-                        error_moving_file_pop_up_message = error_message;
-                        ImGui::OpenPopup(ERROR_MOVING_FILE_POPUP);
-                    }
-                );
+                labelButtonClickHandler();
+            }
 
-                // Upldate the output file.
-                updateOutputFile();
-
-                // Load the next media for preview (if any).
-                {
-                    std::lock_guard<std::mutex> lock(mutex_media_sources);
-                    auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
-                    if (it != m_media_sources->end()) {
-                        m_media_sources->erase(it);
-                    }
-
-                    // Load the next media for preview if available.
-                    // Otherwise, clear the media preview.
-                    if (!m_media_sources->empty()) {
-                        loadCurrentPreviewAndFilepath(m_media_sources->front());
-                    } else {
-                        clearCurrentPreviewAndFilepath();
-                    }
+            if (m_keyboard_label_button_pressed) {
+                if (m_current_media_filepath) {
+                    labelButtonClickHandler();
                 }
+                m_keyboard_label_button_pressed = false;    // Reset the value for next use.
             }
 
             // Error moving file popup.
             ImGui::SetNextWindowSize(toImVec2(ERROR_POPUP_DIALOG_WINDOW_SIZE));
             if (ImGui::BeginPopupModal(ERROR_MOVING_FILE_POPUP, nullptr, ImGuiWindowFlags_NoResize)) {
-                ImGui::TextWrapped("%s", error_moving_file_pop_up_message.c_str());
+                ImGui::TextWrapped("%s", m_error_moving_file_pop_up_message.c_str());
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing());
                 if (ImGui::Button("OK", {ImGui::GetContentRegionAvail().x, 0.0f}) ) { ImGui::CloseCurrentPopup(); }
                 ImGui::SetItemDefaultFocus();
@@ -396,7 +379,7 @@ public:
         ImGui::End();
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg, toImVec4(m_preview_bg_color));
-        if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags)) {
+        if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags | ImGuiWindowFlags_NoNav)) {
             if (m_directory_configuration.has_value()) {
                 if (m_directory_configuration->mediaType == MediaType::Image) {
                     if (m_current_media_filepath && m_current_media_image_preview) {
@@ -488,8 +471,7 @@ public:
                     {
                         std::lock_guard<std::mutex> lock(mutex_media_sources);
                         if (! m_media_sources->empty()) {
-                            m_current_media_filepath = m_media_sources->front();    // TODO: Replace with a function.
-                            m_current_media_image_preview = Image::loadFromFile(m_current_media_filepath.value());
+                            loadCurrentPreviewAndFilepath(m_media_sources->front());
                         }
                     }
                 }
@@ -511,6 +493,9 @@ public:
                 }
                 if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(m_window)) {
                     m_application_should_close = true;
+                }
+                if (event.type == SDL_KEYDOWN) {
+                    handleKeyPress(event.key.keysym.sym);
                 }
             }
 
@@ -1013,14 +998,68 @@ private:
         writer.write_rows(rows);
         outfile.close();
     }
+
+    void labelButtonClickHandler() {
+        moveFile(
+            m_current_media_filepath.value(),
+            (m_bias_value > 0.5f ? m_directory_configuration->classADirectory : m_directory_configuration->classBDirectory),
+            [&](const std::string& error_message) {
+                m_error_moving_file_pop_up_message = error_message;
+                ImGui::OpenPopup(ERROR_MOVING_FILE_POPUP);
+            }
+        );
+
+        // Upldate the output file.
+        updateOutputFile();
+
+        // Load the next media for preview (if any).
+        {
+            std::lock_guard<std::mutex> lock(mutex_media_sources);
+            auto it = std::find(m_media_sources->begin(), m_media_sources->end(), m_current_media_filepath.value());
+            if (it != m_media_sources->end()) {
+                m_media_sources->erase(it);
+            }
+
+            // Load the next media for preview if available.
+            // Otherwise, clear the media preview.
+            if (!m_media_sources->empty()) {
+                loadCurrentPreviewAndFilepath(m_media_sources->front());
+            } else {
+                clearCurrentPreviewAndFilepath();
+            }
+        }
+    }
+
+    void handleKeyPress(SDL_Keycode key) {
+        switch (key)
+        {
+        case SDLK_a:
+            m_bias_value -= m_bias_sensitivity;
+            if (m_bias_value < 0.0f) {
+                m_bias_value = 0.0f;
+            }
+            break;
+        
+        case SDLK_d:
+            m_bias_value += m_bias_sensitivity;
+            if (m_bias_value > 1.0f) {
+                m_bias_value = 1.0f;
+            }
+            break;
+
+        case SDLK_l:
+            m_keyboard_label_button_pressed = true;
+            break;
+        }
+    }
 };
 
 
 int main() {
     const char*   APP_TITLE     = "MLBC";
-    const int32_t APP_WDITH     = 1280;
+    const int32_t APP_WIDTH     = 1280;
     const int32_t APP_HEIGHT    = 720;
 
-    MLBC mlbc(APP_TITLE, APP_WDITH, APP_HEIGHT);
+    MLBC mlbc(APP_TITLE, APP_WIDTH, APP_HEIGHT);
     mlbc.run();
 }
