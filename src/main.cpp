@@ -254,6 +254,13 @@ public:
             
             // Label button.
             bool label_button_clicked = ImGui::Button("Label###label-button", {button_width, 0.0f});
+
+            // Bias sensitivity slider.
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+            ImGui::PushItemWidth(slider_width / 4.0f);
+            ImGui::SliderFloat("###bias-sensitivity-slider-float", &m_bias_sensitivity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::PopItemWidth();
+            ImGui::PopStyleVar();
             
             if (! m_current_media_filepath) {
                 ImGui::PopStyleVar();
