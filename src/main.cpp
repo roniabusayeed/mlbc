@@ -260,7 +260,6 @@ public:
             preview_bg_color_edit_flags |= ImGuiColorEditFlags_AlphaBar;
             ImGui::ColorEdit4("Preview Background", glm::value_ptr(m_preview_bg_color), preview_bg_color_edit_flags);
 
-            // TODO: Put it in a function.
             // Label button click handler.
             if (label_button_clicked) {
                 moveFile(
@@ -289,6 +288,8 @@ public:
                     }
                 }
             }
+
+            
         }
         ImGui::End();
         
@@ -780,6 +781,12 @@ private:
                 if (!success) {
                     ImGui::OpenPopup(INVALID_DIRECTORY_CONFIGURATION_POPUP);
                 } else {
+
+                    // If the outputFilename doesn't have .csv extension, add one.
+                    const char* CSV_EXT = ".csv";
+                    if (! data.outputFilePath.ends_with(CSV_EXT)) {
+                        data.outputFilePath.append(CSV_EXT);
+                    }
 
                     // If validation is successful, set  ConfigureDirectories flag to false.
                     m_ui_flags.ConfigureDirectories = false;
