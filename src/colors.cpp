@@ -254,4 +254,25 @@ namespace ui {
             std::runtime_error("mismatched number of Theme::push() and Theme::pop() calls");
         }
     }
+
+    // Function to get a contrasting grayscale text color
+    glm::vec4 getContrastingTextColor(const glm::vec4& backgroundColor) {
+        
+        // Helper lambda to calculate the relative luminance of a color
+        auto channelLuminance = [](float channel) -> float {
+            return (channel <= 0.03928f) ? (channel / 12.92f) : (std::pow((channel + 0.055f) / 1.055f, 2.4f));
+        };
+
+        // Calculate the relative luminance of the background color
+        float backgroundLuminance = 0.2126f * channelLuminance(backgroundColor.r) + 
+                                    0.7152f * channelLuminance(backgroundColor.g) + 
+                                    0.0722f * channelLuminance(backgroundColor.b);
+
+        // Choose white or black based on the background luminance
+        if (backgroundLuminance > 0.5f) {
+            return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Dark text for light background
+        } else {
+            return glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // Light text for dark background
+        }
+    }
 }

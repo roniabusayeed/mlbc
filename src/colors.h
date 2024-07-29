@@ -78,6 +78,7 @@ namespace ui
 
     std::unique_ptr<Theme> deserializeThemeFromJSON(const std::string& filepath);
     void setupImGuiStyleFromTheme(const Theme& theme, float alpha_threshold = 1.0f);
+    glm::vec4 getContrastingTextColor(const glm::vec4& backgroundColor);
 
     // Color constants.
     const glm::vec4 COLOR_DARK_GREY = {0.2f, 0.2f, 0.2f, 1.0f};

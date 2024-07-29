@@ -64,6 +64,10 @@ inline glm::vec4 toGLMVec4(const std::vector<float>& value) {
     return {value[0], value[1], value[2], value[3]};
 }
 
+inline glm::vec4 toGLMVec4(const ImVec4& value) {
+    return {value.x, value.y, value.z, value.w};
+}
+
 using json = nlohmann::json;
 
 std::string getExecutableDirectory();

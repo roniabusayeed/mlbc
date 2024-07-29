@@ -386,6 +386,7 @@ public:
         ImGui::End();
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg, toImVec4(m_preview_bg_color));
+        ImGui::PushStyleColor(ImGuiCol_Text, toImVec4(ui::getContrastingTextColor(toGLMVec4(ImGui::GetStyle().Colors[ImGuiCol_WindowBg]))));
         if (ImGui::Begin(WINDOW_MEDIA_PREVIEW, nullptr, docked_window_flags | ImGuiWindowFlags_NoNav)) {
             if (m_directory_configuration.has_value()) {
                 if (m_directory_configuration->mediaType == MediaType::Image) {
@@ -400,7 +401,7 @@ public:
             }
         }
         ImGui::End();
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
 
         // Other windows.
         if (m_ui_flags.ConfigureDirectories) {
