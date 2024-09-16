@@ -4,37 +4,19 @@ MLBC simplifies the process of labeling large datasets, such as images, for bina
 
 ## Build (macOS)
 
-1. **Install Homebrew** If not already installed, visit [Homebrew](https://brew.sh/) and follow the installation instructions.
-2. **Clone the Repository** Clone the MLBC repository with the following command.
-    ```
-    git clone --recursive https://github.com/roniabusayeed/mlbc.git`
-    ```
-    *(Note: The $ symbol represents your terminal prompt and is not part of the command.)*
+1. Make sure [Homebrew](https://brew.sh/) is installed on your system.
+2. Clone the repository. (`git clone --recursive https://github.com/roniabusayeed/mlbc.git`)
 
-3. **Build the Project**: Navigate to the project root directory (e.g., .../mlbc/) adn run the following commands.
-    
-    **Configure**
+3. Navigate to the project root directory (e.g., .../mlbc/) and run the following commands.
+    1. `./configure.sh`
+    2. `./build.sh`
 
-    ```
-    ./configure.sh
-    ```
-    *(This command needs to be run only once, even for multiple builds.)*
-
-    **Build**
-    ```
-    ./build.sh
-    ```
-    *(The executable will be located in teh `build` directory within your project root.)*
+    The executable will be located in the `build` directory within your project root.
 
 ## Install (macOS)
-After building the project, install the applicaiton by running from your project root directory:
-```
-./install.sh
-```
-Now that `mlbc` is installed on your system, you can run it from the terminal using:
-```
-mlbc
-```
+Navigate to the project root directory (e.g., .../mlbc/) and run `./install.sh`.
+
+`mlbc` is now installed on your system. You can now run `mlbc` by simply entering `mlbc` on your terminal and hitting the `Return`/`Enter` Key.
 
 ## Keybord Shortcuts
 - **Adjust Confidence Slider** Use A and D keys to decrease and increase the primary slider value, respectively. Adjust sensitivity with the secondary sensitivity slider below the primary slider.
